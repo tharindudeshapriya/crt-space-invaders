@@ -1,33 +1,42 @@
-name: Deploy Space Defender 1984 to AWS EC2
+name: Production Deployment Pipeline
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
-  deploy:
+  build-and-deploy:
     name: Build & Deploy
     runs-on: self-hosted
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js Environment
+      - name: Setup Node.js Runtime
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Sync Code to App Directory (/var/www/app)
-        run: |
-          rsync -av --exclude='.git' --exclude='node_modules' --exclude='.next' ./ /var/www/app/
+      - name: Install Dependencies
+        run: npm ci
 
-      - name: Build & Restart Application
+      - name: Build Next.js Application
+        run: npm run build
+
+      - name: Sync Code Artifacts to Production Directory
+        run: |
+          # ⚠️ In production, ensure sync excludes dynamic user uploads or persistent runtime directories
+          rsync -av --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='actions-runner' \
+            ./ /var/www/app/
+
+      - name: Reload Application Cluster (Zero-Downtime)
         run: |
           cd /var/www/app
-          npm install
-          npm run build
-          pm2 restart ecosystem.config.js --env production
+          # Gracefully reload processes without dropping connection pool
+          pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
           pm2 save
