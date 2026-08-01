@@ -18,7 +18,7 @@ export default function Home() {
           </div>
           <div>
             <h1 className="text-sm sm:text-base font-bold text-glow-green tracking-wider text-[#00ff66]">
-              RETRO CRT ARCADE 1984 TEST
+              RETRO CRT ARCADE 1984
             </h1>
             <p className="text-[10px] text-gray-400 font-mono">
               CANVAS 2D • WEB AUDIO SYNTH • NEXT.JS 16
