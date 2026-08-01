@@ -10,13 +10,23 @@ import {
   PowerUp,
   FloatingText,
   Star,
-  PowerUpType
+  PowerUpType,
+  LeaderboardEntry
 } from '../types/game';
 import { soundEngine } from '../lib/audio';
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
 const HIGH_SCORE_KEY = 'crt_space_invaders_hi_score';
+const LEADERBOARD_KEY = 'crt_space_invaders_leaderboard';
+
+const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
+  { name: 'ACE', score: 12500, date: '1984-06-12' },
+  { name: 'NEO', score: 9800, date: '1984-07-20' },
+  { name: 'CRT', score: 7200, date: '1984-08-01' },
+  { name: 'VAL', score: 4500, date: '1984-08-15' },
+  { name: 'RAD', score: 2800, date: '1984-09-01' },
+];
 
 export default function ArcadeGame() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -26,11 +36,18 @@ export default function ArcadeGame() {
   const [score, setScore] = useState<number>(0);
   const [highScore, setHighScore] = useState<number>(0);
   const [lives, setLives] = useState<number>(3);
+  const [bombs, setBombs] = useState<number>(2);
   const [wave, setWave] = useState<number>(1);
   const [multiplier, setMultiplier] = useState<number>(1);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [activeWeapon, setActiveWeapon] = useState<string>('SINGLE');
   const [shieldActive, setShieldActive] = useState<boolean>(false);
+
+  // Leaderboard State
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(DEFAULT_LEADERBOARD);
+  const leaderboardRef = useRef<LeaderboardEntry[]>(DEFAULT_LEADERBOARD);
+  const [pilotInitials, setPilotInitials] = useState<string>('ACE');
+  const [savedScore, setSavedScore] = useState<boolean>(false);
 
   // References for high performance Canvas Game Loop without stale closures
   const stateRef = useRef<GameStateMode>('START');
@@ -51,6 +68,8 @@ export default function ArcadeGame() {
     speed: 5.5,
     lives: 3,
     maxLives: 5,
+    bombs: 2,
+    maxBombs: 5,
     invulnerableTimer: 0,
     weaponType: 'single',
     weaponTimer: 0,
@@ -110,7 +129,7 @@ export default function ArcadeGame() {
   const spawnTimerRef = useRef<number>(0);
   const screenShakeRef = useRef<number>(0);
 
-  // Load High Score on Mount
+  // Load High Score & Leaderboard on Mount
   useEffect(() => {
     stateRef.current = gameState;
     const savedHi = localStorage.getItem(HIGH_SCORE_KEY);
@@ -119,6 +138,19 @@ export default function ArcadeGame() {
       if (!isNaN(parsed)) {
         setHighScore(parsed);
         highScoreRef.current = parsed;
+      }
+    }
+
+    const savedLb = localStorage.getItem(LEADERBOARD_KEY);
+    if (savedLb) {
+      try {
+        const parsed = JSON.parse(savedLb);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setLeaderboard(parsed);
+          leaderboardRef.current = parsed;
+        }
+      } catch {
+        // Fallback
       }
     }
 
@@ -153,6 +185,8 @@ export default function ArcadeGame() {
       speed: 5.5,
       lives: 3,
       maxLives: 5,
+      bombs: 2,
+      maxBombs: 5,
       invulnerableTimer: 0,
       weaponType: 'single',
       weaponTimer: 0,
@@ -176,10 +210,12 @@ export default function ArcadeGame() {
 
     setScore(0);
     setLives(3);
+    setBombs(2);
     setWave(1);
     setMultiplier(1);
     setActiveWeapon('SINGLE');
     setShieldActive(false);
+    setSavedScore(false);
 
     setGameState('PLAYING');
     stateRef.current = 'PLAYING';
@@ -202,6 +238,27 @@ export default function ArcadeGame() {
       vy: -1.2,
       life: 45,
     });
+  };
+
+  // Save High Score Leaderboard Record
+  const saveLeaderboardRecord = () => {
+    if (scoreRef.current <= 0 || savedScore) return;
+    const cleanName = pilotInitials.toUpperCase().trim().slice(0, 3) || 'AAA';
+    const newEntry: LeaderboardEntry = {
+      name: cleanName,
+      score: scoreRef.current,
+      date: new Date().toISOString().split('T')[0],
+    };
+
+    const updated = [...leaderboardRef.current, newEntry]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+
+    leaderboardRef.current = updated;
+    setLeaderboard(updated);
+    localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(updated));
+    setSavedScore(true);
+    soundEngine.playPowerUp();
   };
 
   // Explosion Particle Creator
@@ -227,6 +284,16 @@ export default function ArcadeGame() {
 
   // EMP Screen Clear Bomb Power-Up Trigger
   const triggerEMPBomb = () => {
+    const player = playerRef.current;
+    if (player.bombs <= 0) {
+      soundEngine.playHit();
+      addFloatingText(player.x, player.y - 20, 'NO BOMBS LEFT!', '#ff007f');
+      return;
+    }
+
+    player.bombs -= 1;
+    setBombs(player.bombs);
+
     soundEngine.playBomb();
     addScreenShake(18);
 
@@ -238,7 +305,7 @@ export default function ArcadeGame() {
     bulletsRef.current = bulletsRef.current.filter((b) => b.isPlayer);
     enemiesRef.current = [];
 
-    addFloatingText(CANVAS_WIDTH / 2 - 60, CANVAS_HEIGHT / 2, 'EMP BOMB WIPEOUT!', '#ffe600');
+    addFloatingText(CANVAS_WIDTH / 2 - 80, CANVAS_HEIGHT / 2, `EMP BOMB! (${player.bombs} REMAINING)`, '#ffe600');
     setScore(scoreRef.current);
   };
 
@@ -246,7 +313,7 @@ export default function ArcadeGame() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Prevent browser default scrolling for arcade control keys
-      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyE'].includes(e.code)) {
         e.preventDefault();
       }
 
@@ -256,6 +323,13 @@ export default function ArcadeGame() {
       if (e.code === 'Space') {
         if (stateRef.current === 'START' || stateRef.current === 'GAMEOVER') {
           resetGame();
+        }
+      }
+
+      // EMP Bomb key (B, E, or Shift)
+      if (e.code === 'KeyB' || e.code === 'KeyE') {
+        if (stateRef.current === 'PLAYING') {
+          triggerEMPBomb();
         }
       }
 
@@ -725,7 +799,13 @@ export default function ArcadeGame() {
               setShieldActive(true);
               addFloatingText(player.x, player.y - 20, 'SHIELD ACTIVATED!', '#ff007f');
             } else if (pu.type === 'bomb') {
-              triggerEMPBomb();
+              if (player.bombs < player.maxBombs) {
+                player.bombs += 1;
+                setBombs(player.bombs);
+                addFloatingText(player.x, player.y - 20, '+1 EMP BOMB!', '#ffe600');
+              } else {
+                addFloatingText(player.x, player.y - 20, 'MAX BOMBS!', '#ffe600');
+              }
             } else if (pu.type === 'life') {
               if (livesRef.current < player.maxLives) {
                 livesRef.current += 1;
@@ -1112,20 +1192,21 @@ export default function ArcadeGame() {
       if (multiplierRef.current > 1) {
         ctx.fillStyle = '#ffe600';
         ctx.shadowColor = '#ffe600';
-        ctx.fillText(`x${multiplierRef.current}`, 180, 24);
+        ctx.fillText(`x${multiplierRef.current}`, 175, 24);
       }
 
       // High Score
       ctx.fillStyle = '#00f0ff';
       ctx.shadowColor = '#00f0ff';
       ctx.textAlign = 'center';
-      ctx.fillText(`HIGH: ${highScoreRef.current.toString().padStart(6, '0')}`, CANVAS_WIDTH / 2, 24);
+      ctx.fillText(`HIGH: ${highScoreRef.current.toString().padStart(6, '0')}`, CANVAS_WIDTH / 2 - 20, 24);
 
-      // Wave Level
-      ctx.fillStyle = '#ff007f';
-      ctx.shadowColor = '#ff007f';
+      // Bomb Inventory Count Display
+      ctx.fillStyle = playerRef.current.bombs > 0 ? '#ffe600' : '#ff007f';
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = 4;
       ctx.textAlign = 'right';
-      ctx.fillText(`WAVE: ${waveRef.current}`, CANVAS_WIDTH - 140, 24);
+      ctx.fillText(`BOMBS: ${playerRef.current.bombs}`, CANVAS_WIDTH - 150, 24);
 
       // Lives Display (Mini Ship Icons)
       for (let l = 0; l < livesRef.current; l++) {
@@ -1150,43 +1231,57 @@ export default function ArcadeGame() {
       // -------------------------------------------------------------
       if (stateRef.current === 'START') {
         ctx.save();
-        ctx.fillStyle = 'rgba(3, 8, 6, 0.82)';
+        ctx.fillStyle = 'rgba(3, 8, 6, 0.88)';
         ctx.fillRect(0, 40, CANVAS_WIDTH, CANVAS_HEIGHT - 40);
 
         // Title Header Banner
-        ctx.font = '24px "Press Start 2P", monospace';
+        ctx.font = '22px "Press Start 2P", monospace';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#00ff66';
         ctx.shadowColor = '#00ff66';
         ctx.shadowBlur = 12;
-        ctx.fillText('SPACE DEFENDER 1984', CANVAS_WIDTH / 2, 160);
+        ctx.fillText('SPACE DEFENDER 1984', CANVAS_WIDTH / 2, 110);
 
-        ctx.font = '12px "Press Start 2P", monospace';
+        ctx.font = '10px "Press Start 2P", monospace';
         ctx.fillStyle = '#00f0ff';
         ctx.shadowColor = '#00f0ff';
         ctx.shadowBlur = 6;
-        ctx.fillText('RETRO 2D ARCADE SHOOTER', CANVAS_WIDTH / 2, 200);
+        ctx.fillText('RETRO 2D ARCADE SHOOTER', CANVAS_WIDTH / 2, 140);
 
         // Flashing Press Space
         if (Math.floor(tick / 30) % 2 === 0) {
-          ctx.font = '14px "Press Start 2P", monospace';
+          ctx.font = '12px "Press Start 2P", monospace';
           ctx.fillStyle = '#ffe600';
           ctx.shadowColor = '#ffe600';
           ctx.shadowBlur = 8;
-          ctx.fillText('PRESS SPACE TO START', CANVAS_WIDTH / 2, 290);
+          ctx.fillText('PRESS SPACE OR TAP TO START', CANVAS_WIDTH / 2, 210);
         }
 
+        // Leaderboard Hall of Fame Table
+        ctx.font = '11px "Press Start 2P", monospace';
+        ctx.fillStyle = '#ffe600';
+        ctx.shadowColor = '#ffe600';
+        ctx.shadowBlur = 6;
+        ctx.fillText('★ TOP 5 PILOTS HALL OF FAME ★', CANVAS_WIDTH / 2, 280);
+
+        leaderboardRef.current.slice(0, 5).forEach((entry, idx) => {
+          const yPos = 315 + idx * 26;
+          const rankLabel = `${idx + 1}. ${entry.name.padEnd(4, ' ')}`;
+          const scoreLabel = entry.score.toString().padStart(6, '0');
+          ctx.font = '10px "Press Start 2P", monospace';
+          ctx.fillStyle = idx === 0 ? '#ffe600' : idx === 1 ? '#00f0ff' : '#00ff66';
+          ctx.shadowBlur = 4;
+          ctx.fillText(`${rankLabel} - ${scoreLabel}`, CANVAS_WIDTH / 2, yPos);
+        });
+
         // Control Cards
-        ctx.font = '10px "Press Start 2P", monospace';
+        ctx.font = '9px "Press Start 2P", monospace';
         ctx.fillStyle = '#ffffff';
         ctx.shadowBlur = 0;
 
-        ctx.fillText('MOVE: ARROW KEYS or W / A / S / D', CANVAS_WIDTH / 2, 360);
-        ctx.fillText('FIRE LASER: SPACEBAR', CANVAS_WIDTH / 2, 390);
-        ctx.fillText('PAUSE: P / ESC    MUTE: M', CANVAS_WIDTH / 2, 420);
-
-        ctx.fillStyle = '#ff007f';
-        ctx.fillText('COLLECT POWER-UPS FOR TRIPLE SHOTS & SHIELDS!', CANVAS_WIDTH / 2, 480);
+        ctx.fillText('MOVE: WASD / ARROWS / MOUSE / TOUCH DRAG', CANVAS_WIDTH / 2, 480);
+        ctx.fillText('FIRE: SPACE / CLICK    BOMB: [B] KEY or BOMB BUTTON', CANVAS_WIDTH / 2, 510);
+        ctx.fillText('PAUSE: P / ESC    MUTE: M', CANVAS_WIDTH / 2, 540);
 
         ctx.restore();
       } else if (stateRef.current === 'PAUSED') {
@@ -1208,37 +1303,48 @@ export default function ArcadeGame() {
         ctx.restore();
       } else if (stateRef.current === 'GAMEOVER') {
         ctx.save();
-        ctx.fillStyle = 'rgba(10, 2, 5, 0.85)';
+        ctx.fillStyle = 'rgba(10, 2, 5, 0.88)';
         ctx.fillRect(0, 40, CANVAS_WIDTH, CANVAS_HEIGHT - 40);
 
-        ctx.font = '28px "Press Start 2P", monospace';
+        ctx.font = '26px "Press Start 2P", monospace';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#ff007f';
         ctx.shadowColor = '#ff007f';
         ctx.shadowBlur = 16;
-        ctx.fillText('GAME OVER', CANVAS_WIDTH / 2, 200);
+        ctx.fillText('GAME OVER', CANVAS_WIDTH / 2, 140);
 
         ctx.font = '14px "Press Start 2P", monospace';
         ctx.fillStyle = '#00ff66';
         ctx.shadowColor = '#00ff66';
         ctx.shadowBlur = 8;
-        ctx.fillText(`FINAL SCORE: ${scoreRef.current}`, CANVAS_WIDTH / 2, 270);
+        ctx.fillText(`FINAL SCORE: ${scoreRef.current}`, CANVAS_WIDTH / 2, 190);
 
         ctx.fillStyle = '#00f0ff';
         ctx.shadowColor = '#00f0ff';
-        ctx.fillText(`HIGH SCORE: ${highScoreRef.current}`, CANVAS_WIDTH / 2, 310);
+        ctx.fillText(`HIGH SCORE: ${highScoreRef.current}`, CANVAS_WIDTH / 2, 225);
 
-        if (scoreRef.current >= highScoreRef.current && scoreRef.current > 0) {
-          ctx.fillStyle = '#ffe600';
-          ctx.shadowColor = '#ffe600';
-          ctx.fillText('★ NEW HIGH SCORE RECORD! ★', CANVAS_WIDTH / 2, 360);
-        }
+        // Leaderboard Table on Game Over
+        ctx.font = '11px "Press Start 2P", monospace';
+        ctx.fillStyle = '#ffe600';
+        ctx.shadowColor = '#ffe600';
+        ctx.shadowBlur = 6;
+        ctx.fillText('LEADERBOARD RANKINGS', CANVAS_WIDTH / 2, 280);
+
+        leaderboardRef.current.slice(0, 5).forEach((entry, idx) => {
+          const yPos = 315 + idx * 24;
+          const rankLabel = `${idx + 1}. ${entry.name.padEnd(4, ' ')}`;
+          const scoreLabel = entry.score.toString().padStart(6, '0');
+          ctx.font = '10px "Press Start 2P", monospace';
+          ctx.fillStyle = idx === 0 ? '#ffe600' : idx === 1 ? '#00f0ff' : '#00ff66';
+          ctx.shadowBlur = 4;
+          ctx.fillText(`${rankLabel} - ${scoreLabel}`, CANVAS_WIDTH / 2, yPos);
+        });
 
         if (Math.floor(tick / 30) % 2 === 0) {
-          ctx.font = '12px "Press Start 2P", monospace';
+          ctx.font = '11px "Press Start 2P", monospace';
           ctx.fillStyle = '#ffffff';
           ctx.shadowBlur = 0;
-          ctx.fillText('PRESS SPACE TO RESTART', CANVAS_WIDTH / 2, 440);
+          ctx.fillText('PRESS SPACE TO RESTART', CANVAS_WIDTH / 2, 480);
         }
 
         ctx.restore();
@@ -1310,6 +1416,35 @@ export default function ArcadeGame() {
         <div className="absolute inset-0 crt-glare pointer-events-none z-30" />
       </div>
 
+      {/* Leaderboard Submission Box (Visible on Game Over) */}
+      {gameState === 'GAMEOVER' && score > 0 && (
+        <div className="mt-3 w-full max-w-[800px] bg-stone-900/90 border border-[#ffe600]/40 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-xl animate-in fade-in">
+          <div className="flex items-center space-x-2 text-[#ffe600]">
+            <span>🏆 LEADERBOARD ENTRY: ENTER CALL SIGN</span>
+          </div>
+          {savedScore ? (
+            <div className="text-[#00ff66] font-bold font-retro">✓ SAVED TO HALL OF FAME!</div>
+          ) : (
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                maxLength={3}
+                value={pilotInitials}
+                onChange={(e) => setPilotInitials(e.target.value.toUpperCase())}
+                className="w-16 bg-black border border-[#00ff66] text-[#00ff66] text-center font-retro py-1 px-2 uppercase rounded focus:outline-none focus:ring-1 focus:ring-[#00ff66]"
+                placeholder="ACE"
+              />
+              <button
+                onClick={saveLeaderboardRecord}
+                className="bg-[#00ff66] text-black font-retro font-bold px-3 py-1 rounded hover:bg-[#00f0ff] transition-all active:scale-95"
+              >
+                SAVE
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* On-Screen Touch & Mobile Virtual Controller */}
       <div className="mt-4 w-full max-w-[800px] flex items-center justify-between px-2 sm:px-6 select-none touch-none">
         {/* Virtual D-Pad */}
@@ -1355,8 +1490,8 @@ export default function ArcadeGame() {
 
         {/* Status Indicator */}
         <div className="hidden sm:flex flex-col items-center text-[10px] font-retro text-stone-400 text-center">
-          <span className="text-[#00f0ff] animate-pulse">TOUCH / MOUSE CONTROL ACTIVE</span>
-          <span className="text-[9px] text-stone-500 mt-1">DRAG SCREEN TO MOVE & FIRE</span>
+          <span className="text-[#ffe600]">BOMB: [B] KEY</span>
+          <span className="text-[9px] text-stone-500 mt-1">BOMBS REMAINING: {bombs}</span>
         </div>
 
         {/* Virtual Action Buttons */}
@@ -1369,9 +1504,14 @@ export default function ArcadeGame() {
                 triggerEMPBomb();
               }
             }}
-            className="w-14 h-14 bg-gradient-to-b from-[#ffe600]/30 to-amber-900/40 border border-[#ffe600] active:scale-95 text-[#ffe600] rounded-full font-retro text-[9px] font-bold shadow-[0_0_10px_rgba(255,230,0,0.3)] flex items-center justify-center transition-transform"
+            disabled={gameState === 'PLAYING' && bombs <= 0}
+            className={`w-14 h-14 rounded-full font-retro text-[9px] font-bold shadow-lg flex items-center justify-center transition-transform active:scale-95 ${
+              bombs > 0 || gameState !== 'PLAYING'
+                ? 'bg-gradient-to-b from-[#ffe600]/30 to-amber-900/40 border border-[#ffe600] text-[#ffe600]'
+                : 'bg-stone-800 border border-stone-700 text-stone-600 opacity-50 cursor-not-allowed'
+            }`}
           >
-            BOMB
+            BOMB ({bombs})
           </button>
           <button
             onPointerDown={() => {

@@ -10,6 +10,12 @@ export interface Velocity {
   y: number;
 }
 
+export interface LeaderboardEntry {
+  name: string;
+  score: number;
+  date: string;
+}
+
 export interface Player {
   x: number;
   y: number;
@@ -18,7 +24,9 @@ export interface Player {
   speed: number;
   lives: number;
   maxLives: number;
-  invulnerableTimer: number; // in seconds or frames
+  bombs: number;
+  maxBombs: number;
+  invulnerableTimer: number;
   weaponType: 'single' | 'double' | 'triple';
   weaponTimer: number;
   hasShield: boolean;
