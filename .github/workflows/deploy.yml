@@ -9,7 +9,7 @@ on:
 jobs:
   deploy:
     name: Build & Deploy
-    runs-on: self-hosted # Connects to EC2 self-hosted runner
+    runs-on: self-hosted
 
     steps:
       - name: Checkout Code
@@ -20,13 +20,14 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Build Next.js Application
-        run: npm run build
-
-      - name: Reload PM2 Application Cluster
+      - name: Sync Code to App Directory (/var/www/app)
         run: |
-          pm2 startOrReload ecosystem.config.js --env production
+          rsync -av --exclude='.git' --exclude='node_modules' --exclude='.next' ./ /var/www/app/
+
+      - name: Build & Restart Application
+        run: |
+          cd /var/www/app
+          npm install
+          npm run build
+          pm2 restart ecosystem.config.js --env production
           pm2 save
