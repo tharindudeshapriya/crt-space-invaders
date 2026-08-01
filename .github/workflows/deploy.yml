@@ -1,0 +1,32 @@
+name: Deploy Space Defender 1984 to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: self-hosted # Connects to EC2 self-hosted runner
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Next.js Application
+        run: npm run build
+
+      - name: Reload PM2 Application Cluster
+        run: |
+          pm2 startOrReload ecosystem.config.js --env production
+          pm2 save
