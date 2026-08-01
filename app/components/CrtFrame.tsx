@@ -20,30 +20,30 @@ export default function CrtFrame() {
   };
 
   return (
-    <div className="w-full max-w-5xl px-4 py-6 flex flex-col items-center justify-center">
+    <div className="w-full max-w-5xl px-1 sm:px-4 py-2 sm:py-6 flex flex-col items-center justify-center">
       {/* Outer CRT TV Cabinet Housing */}
-      <div className="relative w-full bg-[#18171f] border-4 border-[#2d2a3d] rounded-[38px] p-6 sm:p-10 crt-bezel-shadow flex flex-col items-center">
+      <div className="relative w-full bg-[#18171f] border-2 sm:border-4 border-[#2d2a3d] rounded-2xl sm:rounded-[38px] p-2.5 sm:p-6 md:p-10 crt-bezel-shadow flex flex-col items-center">
         
         {/* Top Cabinet Texture Vent Grills */}
-        <div className="w-full flex justify-between items-center mb-4 px-4 opacity-75">
-          <div className="flex space-x-1.5">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="w-8 h-1.5 bg-[#0d0c12] rounded-full shadow-inner" />
+        <div className="w-full flex justify-between items-center mb-2 sm:mb-4 px-2 opacity-75">
+          <div className="hidden sm:flex space-x-1.5">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="w-6 sm:w-8 h-1.5 bg-[#0d0c12] rounded-full shadow-inner" />
             ))}
           </div>
-          <div className="flex items-center space-x-2 text-[10px] text-[#00ff66]/80 font-mono tracking-widest uppercase">
+          <div className="flex items-center space-x-2 text-[9px] sm:text-[10px] text-[#00ff66]/80 font-mono tracking-widest uppercase">
             <Radio className="w-3.5 h-3.5 text-[#00ff66] animate-pulse" />
             <span>NTSC-US 60Hz RGB</span>
           </div>
-          <div className="flex space-x-1.5">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="w-8 h-1.5 bg-[#0d0c12] rounded-full shadow-inner" />
+          <div className="hidden sm:flex space-x-1.5">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="w-6 sm:w-8 h-1.5 bg-[#0d0c12] rounded-full shadow-inner" />
             ))}
           </div>
         </div>
 
         {/* Inner Curved CRT Screen Bezel */}
-        <div className="relative w-full bg-[#0a0810] rounded-[24px] p-3 sm:p-5 border-8 border-[#12101b] shadow-[inset_0_4px_12px_rgba(0,0,0,0.9)] overflow-hidden">
+        <div className="relative w-full bg-[#0a0810] rounded-xl sm:rounded-[24px] p-1.5 sm:p-4 border-4 sm:border-8 border-[#12101b] shadow-[inset_0_4px_12px_rgba(0,0,0,0.9)] overflow-hidden">
           {isPowerOn ? (
             <ArcadeGame />
           ) : (

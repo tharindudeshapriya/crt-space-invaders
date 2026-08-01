@@ -68,6 +68,41 @@ export default function ArcadeGame() {
   const floatingTextsRef = useRef<FloatingText[]>([]);
   const starsRef = useRef<Star[]>([]);
 
+  // Mouse & Touch Pointer Reference
+  const pointerRef = useRef<{
+    x: number;
+    y: number;
+    active: boolean;
+    firing: boolean;
+    lastX: number;
+    vx: number;
+  }>({
+    x: CANVAS_WIDTH / 2,
+    y: CANVAS_HEIGHT - 70,
+    active: false,
+    firing: false,
+    lastX: CANVAS_WIDTH / 2,
+    vx: 0,
+  });
+
+  const updatePointerPosition = (clientX: number, clientY: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = CANVAS_WIDTH / rect.width;
+    const scaleY = CANVAS_HEIGHT / rect.height;
+
+    const targetX = (clientX - rect.left) * scaleX;
+    const targetY = (clientY - rect.top) * scaleY;
+
+    const vx = targetX - pointerRef.current.lastX;
+    pointerRef.current.lastX = targetX;
+    pointerRef.current.vx = vx;
+    pointerRef.current.x = targetX;
+    pointerRef.current.y = targetY;
+    pointerRef.current.active = true;
+  };
+
   // System timers & frame ref
   const animFrameIdRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
@@ -281,7 +316,7 @@ export default function ArcadeGame() {
       if (stateRef.current === 'PLAYING') {
         const player = playerRef.current;
 
-        // Player Movement Controls
+        // Player Movement Controls (Keyboard, Mouse, or Touch)
         let dx = 0;
         let dy = 0;
         if (keysRef.current['ArrowLeft'] || keysRef.current['KeyA']) dx -= 1;
@@ -289,14 +324,20 @@ export default function ArcadeGame() {
         if (keysRef.current['ArrowUp'] || keysRef.current['KeyW']) dy -= 1;
         if (keysRef.current['ArrowDown'] || keysRef.current['KeyS']) dy += 1;
 
-        // Normalize diagonal speed
-        if (dx !== 0 && dy !== 0) {
-          dx *= 0.7071;
-          dy *= 0.7071;
+        if (dx !== 0 || dy !== 0) {
+          pointerRef.current.active = false;
+          if (dx !== 0 && dy !== 0) {
+            dx *= 0.7071;
+            dy *= 0.7071;
+          }
+          player.x += dx * player.speed;
+          player.y += dy * player.speed;
+        } else if (pointerRef.current.active) {
+          const targetX = pointerRef.current.x - player.width / 2;
+          const targetY = pointerRef.current.y - player.height / 2;
+          player.x += (targetX - player.x) * 0.25;
+          player.y += (targetY - player.y) * 0.25;
         }
-
-        player.x += dx * player.speed;
-        player.y += dy * player.speed;
 
         // Clamp inside Canvas bounds
         player.x = Math.max(10, Math.min(CANVAS_WIDTH - player.width - 10, player.x));
@@ -332,10 +373,11 @@ export default function ArcadeGame() {
           player.invulnerableTimer--;
         }
 
-        // Player Firing
+        // Player Firing (Keyboard Space or Mouse / Touch Hold)
         if (fireCooldownRef.current > 0) fireCooldownRef.current--;
 
-        if (keysRef.current['Space'] && fireCooldownRef.current <= 0) {
+        const isFiring = keysRef.current['Space'] || pointerRef.current.firing;
+        if (isFiring && fireCooldownRef.current <= 0) {
           fireCooldownRef.current = 10; // rate limit frames
           soundEngine.playLaser();
 
@@ -1218,39 +1260,135 @@ export default function ArcadeGame() {
   }, [resetGame]);
 
   return (
-    <div className="relative w-full max-w-[800px] aspect-[4/3] mx-auto bg-[#030806] rounded-lg overflow-hidden shadow-2xl">
-      {/* Canvas Element */}
-      <canvas
-        ref={canvasRef}
-        width={CANVAS_WIDTH}
-        height={CANVAS_HEIGHT}
-        className="w-full h-full block crt-flicker"
-      />
-
-      {/* CRT Physical Screen Effect Layers */}
-      <div className="absolute inset-0 crt-scanlines pointer-events-none z-10" />
-      <div className="absolute inset-0 crt-vignette pointer-events-none z-20" />
-      <div className="absolute inset-0 crt-glare pointer-events-none z-30" />
-
-      {/* Quick Mobile / On-Screen Touch Controls & Status Bar */}
-      <div className="absolute bottom-3 left-4 right-4 z-40 flex items-center justify-between pointer-events-auto sm:hidden bg-black/60 backdrop-blur border border-[#00ff66]/30 px-3 py-1.5 rounded text-[10px]">
-        <button
-          onClick={() => {
-            if (gameState === 'START' || gameState === 'GAMEOVER') resetGame();
+    <div className="flex flex-col items-center w-full">
+      {/* Canvas Display Container */}
+      <div className="relative w-full max-w-[800px] aspect-[4/3] mx-auto bg-[#030806] rounded-lg overflow-hidden shadow-2xl select-none touch-none">
+        {/* Canvas Element with Mouse & Touch Event Handlers */}
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          className="w-full h-full block crt-flicker cursor-crosshair"
+          onPointerDown={(e) => {
+            if (stateRef.current === 'START' || stateRef.current === 'GAMEOVER') {
+              resetGame();
+            } else {
+              updatePointerPosition(e.clientX, e.clientY);
+              pointerRef.current.firing = true;
+            }
           }}
-          className="bg-[#00ff66] text-black px-2.5 py-1 rounded font-bold hover:bg-[#00f0ff]"
-        >
-          {gameState === 'PLAYING' ? 'FIRE' : 'START'}
-        </button>
-        <button
-          onClick={() => {
-            const m = soundEngine.toggleMute();
-            setIsMuted(m);
+          onPointerMove={(e) => {
+            updatePointerPosition(e.clientX, e.clientY);
           }}
-          className="text-[#00f0ff] underline"
-        >
-          {isMuted ? 'UNMUTE' : 'MUTE'}
-        </button>
+          onPointerUp={() => {
+            pointerRef.current.firing = false;
+          }}
+          onPointerLeave={() => {
+            pointerRef.current.firing = false;
+          }}
+          onTouchStart={(e) => {
+            if (stateRef.current === 'START' || stateRef.current === 'GAMEOVER') {
+              resetGame();
+            } else if (e.touches.length > 0) {
+              updatePointerPosition(e.touches[0].clientX, e.touches[0].clientY);
+              pointerRef.current.firing = true;
+            }
+          }}
+          onTouchMove={(e) => {
+            if (e.touches.length > 0) {
+              updatePointerPosition(e.touches[0].clientX, e.touches[0].clientY);
+            }
+          }}
+          onTouchEnd={() => {
+            pointerRef.current.firing = false;
+          }}
+        />
+
+        {/* CRT Physical Screen Effect Layers */}
+        <div className="absolute inset-0 crt-scanlines pointer-events-none z-10" />
+        <div className="absolute inset-0 crt-vignette pointer-events-none z-20" />
+        <div className="absolute inset-0 crt-glare pointer-events-none z-30" />
+      </div>
+
+      {/* On-Screen Touch & Mobile Virtual Controller */}
+      <div className="mt-4 w-full max-w-[800px] flex items-center justify-between px-2 sm:px-6 select-none touch-none">
+        {/* Virtual D-Pad */}
+        <div className="relative w-28 h-28 bg-stone-900/90 border border-stone-700/80 rounded-2xl p-2 grid grid-cols-3 grid-rows-3 gap-1 shadow-lg">
+          <div />
+          <button
+            onPointerDown={() => (keysRef.current['ArrowUp'] = true)}
+            onPointerUp={() => (keysRef.current['ArrowUp'] = false)}
+            onPointerLeave={() => (keysRef.current['ArrowUp'] = false)}
+            className="bg-stone-800 active:bg-[#00ff66] active:text-black border border-stone-700 rounded-lg text-center text-xs font-bold text-[#00ff66] flex items-center justify-center transition-transform active:scale-95"
+          >
+            ▲
+          </button>
+          <div />
+          <button
+            onPointerDown={() => (keysRef.current['ArrowLeft'] = true)}
+            onPointerUp={() => (keysRef.current['ArrowLeft'] = false)}
+            onPointerLeave={() => (keysRef.current['ArrowLeft'] = false)}
+            className="bg-stone-800 active:bg-[#00ff66] active:text-black border border-stone-700 rounded-lg text-center text-xs font-bold text-[#00ff66] flex items-center justify-center transition-transform active:scale-95"
+          >
+            ◀
+          </button>
+          <div className="flex items-center justify-center text-[9px] text-stone-500 font-mono">D-PAD</div>
+          <button
+            onPointerDown={() => (keysRef.current['ArrowRight'] = true)}
+            onPointerUp={() => (keysRef.current['ArrowRight'] = false)}
+            onPointerLeave={() => (keysRef.current['ArrowRight'] = false)}
+            className="bg-stone-800 active:bg-[#00ff66] active:text-black border border-stone-700 rounded-lg text-center text-xs font-bold text-[#00ff66] flex items-center justify-center transition-transform active:scale-95"
+          >
+            ▶
+          </button>
+          <div />
+          <button
+            onPointerDown={() => (keysRef.current['ArrowDown'] = true)}
+            onPointerUp={() => (keysRef.current['ArrowDown'] = false)}
+            onPointerLeave={() => (keysRef.current['ArrowDown'] = false)}
+            className="bg-stone-800 active:bg-[#00ff66] active:text-black border border-stone-700 rounded-lg text-center text-xs font-bold text-[#00ff66] flex items-center justify-center transition-transform active:scale-95"
+          >
+            ▼
+          </button>
+          <div />
+        </div>
+
+        {/* Status Indicator */}
+        <div className="hidden sm:flex flex-col items-center text-[10px] font-retro text-stone-400 text-center">
+          <span className="text-[#00f0ff] animate-pulse">TOUCH / MOUSE CONTROL ACTIVE</span>
+          <span className="text-[9px] text-stone-500 mt-1">DRAG SCREEN TO MOVE & FIRE</span>
+        </div>
+
+        {/* Virtual Action Buttons */}
+        <div className="flex items-center space-x-3">
+          <button
+            onPointerDown={() => {
+              if (stateRef.current === 'START' || stateRef.current === 'GAMEOVER') {
+                resetGame();
+              } else {
+                triggerEMPBomb();
+              }
+            }}
+            className="w-14 h-14 bg-gradient-to-b from-[#ffe600]/30 to-amber-900/40 border border-[#ffe600] active:scale-95 text-[#ffe600] rounded-full font-retro text-[9px] font-bold shadow-[0_0_10px_rgba(255,230,0,0.3)] flex items-center justify-center transition-transform"
+          >
+            BOMB
+          </button>
+          <button
+            onPointerDown={() => {
+              if (stateRef.current === 'START' || stateRef.current === 'GAMEOVER') {
+                resetGame();
+              } else {
+                pointerRef.current.firing = true;
+              }
+            }}
+            onPointerUp={() => {
+              pointerRef.current.firing = false;
+            }}
+            className="w-16 h-16 bg-gradient-to-b from-[#00ff66]/30 to-emerald-900/40 border-2 border-[#00ff66] active:scale-95 text-[#00ff66] rounded-full font-retro text-[10px] font-bold shadow-[0_0_15px_rgba(0,255,102,0.4)] flex items-center justify-center transition-transform"
+          >
+            {gameState === 'PLAYING' ? 'FIRE' : 'START'}
+          </button>
+        </div>
       </div>
     </div>
   );
