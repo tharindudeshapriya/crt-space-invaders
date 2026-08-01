@@ -1,19 +1,18 @@
 module.exports = {
   apps: [
     {
-      name: 'space-defender-1984',
+      name: 'crt-space-invaders',
       script: 'node_modules/next/dist/bin/next',
-      args: 'start -p 3000',
-      cwd: '/var/www/app',
+      args: 'start',
       instances: 'max',
       exec_mode: 'cluster',
       autorestart: true,
       watch: false,
       max_memory_restart: '800M',
-      env_production: {
+      env: {
         NODE_ENV: 'production',
-        PORT: 3000
-      }
-    }
-  ]
+        PORT: 3000,
+      },
+    },
+  ],
 };
