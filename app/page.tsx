@@ -6,7 +6,7 @@ import { Gamepad2, Sparkles, Trophy, Zap } from 'lucide-react';
 export default function Home() {
   return (
     <main className="w-full min-h-screen bg-[#06050a] text-white flex flex-col items-center justify-between p-4 sm:p-8 relative overflow-hidden">
-      
+
       {/* Retro Arcade Ambient Neon Backlight Glow */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-gradient-to-tr from-[#00ff66]/15 via-[#ff007f]/10 to-[#00f0ff]/15 blur-[140px] pointer-events-none rounded-full" />
 
@@ -18,7 +18,7 @@ export default function Home() {
           </div>
           <div>
             <h1 className="text-sm sm:text-base font-bold text-glow-green tracking-wider text-[#00ff66]">
-              RETRO CRT ARCADE 1984
+              RETRO CRT ARCADE 1984 TEST
             </h1>
             <p className="text-[10px] text-gray-400 font-mono">
               CANVAS 2D • WEB AUDIO SYNTH • NEXT.JS 16
