@@ -2,6 +2,21 @@ export type GameStateMode = 'START' | 'PLAYING' | 'PAUSED' | 'GAMEOVER';
 
 export type CrtThemeMode = 'NEON' | 'PHOSPHOR_GREEN' | 'AMBER_CRT' | 'MONOCHROME';
 
+export type WeaponType = 'single' | 'triple' | 'plasma_beam' | 'homing_missiles' | 'hyper_cannon';
+
+export type PowerUpType = 'triple' | 'shield' | 'bomb' | 'life' | 'beam' | 'missiles' | 'time_freeze' | 'overdrive';
+
+export type EnemyType =
+  | 'invader'
+  | 'asteroid_lg'
+  | 'asteroid_md'
+  | 'asteroid_sm'
+  | 'saucer'
+  | 'boss1'
+  | 'boss2'
+  | 'boss3'
+  | 'boss4';
+
 export interface Position {
   x: number;
   y: number;
@@ -20,7 +35,7 @@ export interface LeaderboardEntry {
 
 export interface CrtSettings {
   theme: CrtThemeMode;
-  scanlineOpacity: number; // 0.0 to 1.0
+  scanlineOpacity: number;
   flickerEnabled: boolean;
   vignetteEnabled: boolean;
   bgmMuted: boolean;
@@ -37,8 +52,10 @@ export interface Player {
   bombs: number;
   maxBombs: number;
   invulnerableTimer: number;
-  weaponType: 'single' | 'double' | 'triple';
+  weaponType: WeaponType;
   weaponTimer: number;
+  timeFreezeTimer: number;
+  overdriveTimer: number;
   hasShield: boolean;
   shieldHits: number;
   score: number;
@@ -56,9 +73,11 @@ export interface Bullet {
   color: string;
   isPlayer: boolean;
   damage: number;
+  isHoming?: boolean;
+  targetEnemyId?: string;
+  isBeam?: boolean;
+  isHyper?: boolean;
 }
-
-export type EnemyType = 'invader' | 'asteroid_lg' | 'asteroid_md' | 'asteroid_sm' | 'saucer' | 'boss';
 
 export interface Enemy {
   id: string;
@@ -83,6 +102,7 @@ export interface Enemy {
   bossShieldAngle?: number;
   laserBeamActive?: boolean;
   laserBeamWidth?: number;
+  teleportTimer?: number;
 }
 
 export interface Particle {
@@ -98,8 +118,6 @@ export interface Particle {
   life: number;
   shape?: 'square' | 'circle' | 'spark';
 }
-
-export type PowerUpType = 'triple' | 'shield' | 'bomb' | 'life';
 
 export interface PowerUp {
   id: string;

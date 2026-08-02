@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import ArcadeGame from './ArcadeGame';
-import { Volume2, VolumeX, Monitor, Power, Zap, HelpCircle, Radio, Music, Palette } from 'lucide-react';
+import { Volume2, VolumeX, Monitor, Power, Zap, HelpCircle, Shield, Radio, Music, Palette, ShieldAlert, Cpu } from 'lucide-react';
 import { soundEngine } from '../lib/audio';
 import { CrtThemeMode } from '../types/game';
 
@@ -81,7 +81,7 @@ export default function CrtFrame() {
                 CYBERTRON-80
               </div>
               <div className="text-[9px] text-gray-400 font-mono tracking-wider uppercase">
-                COLOR MATRIX CRT SYSTEM
+                5 LEVELS • 4 BOSSES • 8 POWER-UPS
               </div>
             </div>
           </div>
@@ -151,7 +151,7 @@ export default function CrtFrame() {
         <div className="w-full mt-6 bg-[#12101b] border-2 border-[#00ff66]/40 rounded-2xl p-5 shadow-2xl text-left text-xs space-y-4 animate-in fade-in slide-in-from-top-4">
           <div className="flex justify-between items-center border-b border-[#00ff66]/20 pb-3">
             <h3 className="text-sm font-bold text-[#00ff66] flex items-center gap-2">
-              <Zap className="w-4 h-4 text-[#ffe600]" /> RETRO ARCADE PILOT MANUAL
+              <Zap className="w-4 h-4 text-[#ffe600]" /> MEGA EXPANSION PILOT MANUAL
             </h3>
             <button
               onClick={() => setShowInstructions(false)}
@@ -161,24 +161,35 @@ export default function CrtFrame() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-300">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-gray-300">
             <div className="space-y-2 bg-black/40 p-3 rounded-lg border border-stone-800">
               <p className="text-[#00f0ff] font-bold">🕹️ FLIGHT CONTROLS</p>
               <ul className="space-y-1 font-mono text-[11px]">
-                <li><strong className="text-white">WASD / ARROWS / MOUSE / TOUCH DRAG:</strong> Move Ship</li>
-                <li><strong className="text-white">SPACEBAR / CLICK:</strong> Fire Plasma Lasers</li>
+                <li><strong className="text-white">WASD / ARROWS / MOUSE / TOUCH:</strong> Move</li>
+                <li><strong className="text-white">SPACE / CLICK:</strong> Fire Primary Weapon</li>
                 <li><strong className="text-white">B or E KEY:</strong> Launch EMP Bomb</li>
-                <li><strong className="text-white">P or ESC:</strong> Pause Game    <strong className="text-white">M:</strong> Mute SFX</li>
+                <li><strong className="text-white">P or ESC:</strong> Pause Game</li>
               </ul>
             </div>
 
             <div className="space-y-2 bg-black/40 p-3 rounded-lg border border-stone-800">
-              <p className="text-[#ff007f] font-bold">⚡ POWER-UPS & BOSSES</p>
+              <p className="text-[#ff007f] font-bold">⚡ 8 POWER-UP MODES</p>
               <ul className="space-y-1 font-mono text-[11px]">
-                <li><strong className="text-[#00f0ff]">3X (Triple Laser):</strong> Spreads 3 plasma beams</li>
-                <li><strong className="text-[#ff007f]">SH (Shield):</strong> Absorbs 2 enemy hits</li>
-                <li><strong className="text-[#ffe600]">B (EMP Bomb):</strong> Clears screen enemies</li>
-                <li><strong className="text-[#ff007f]">MOTHER-SHIP BOSS:</strong> Spawns at Wave 5 & 10!</li>
+                <li><strong className="text-[#00f0ff]">3X:</strong> Tri-Laser Spread</li>
+                <li><strong className="text-[#ff007f]">BEAM:</strong> Heavy Plasma Column</li>
+                <li><strong className="text-[#ffe600]">MISSILES:</strong> Auto-Homing Plasma</li>
+                <li><strong className="text-[#00ff66]">TIME FREEZE:</strong> 40% Slow-Mo</li>
+                <li><strong className="text-[#ffe600]">OVERDRIVE:</strong> Rapid Fire Rate</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2 bg-black/40 p-3 rounded-lg border border-stone-800">
+              <p className="text-[#ffe600] font-bold">👑 4 BOSSES & 5 LEVELS</p>
+              <ul className="space-y-1 font-mono text-[11px]">
+                <li><strong className="text-white">L1 (Wave 3):</strong> Scout Dreadnought</li>
+                <li><strong className="text-white">L2 (Wave 6):</strong> Asteroid Crusher Titan</li>
+                <li><strong className="text-white">L3 (Wave 9):</strong> Nebula Phantom</li>
+                <li><strong className="text-white">L4 (Wave 12):</strong> CYBERTRON OVERLORD</li>
               </ul>
             </div>
           </div>

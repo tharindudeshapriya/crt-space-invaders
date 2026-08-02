@@ -52,7 +52,7 @@ class SoundEngine {
   }
 
   public setBGMTempo(bpm: number) {
-    this.bgmBpm = Math.min(200, Math.max(100, bpm));
+    this.bgmBpm = Math.min(210, Math.max(100, bpm));
     if (this.bgmIntervalId !== null) {
       this.stopBGM();
       this.startBGM();
@@ -64,7 +64,6 @@ class SoundEngine {
     this.initCtx();
     if (!this.ctx) return;
 
-    // 16-step Retro Arcade Arpeggiated Melody Notes (frequencies in Hz)
     const melodyNotes = [
       110, 164.81, 220, 329.63, 110, 164.81, 220, 261.63,
       130.81, 196, 261.63, 392, 130.81, 196, 261.63, 329.63,
@@ -79,7 +78,6 @@ class SoundEngine {
         const now = this.ctx.currentTime;
         const noteFreq = melodyNotes[this.bgmStep % melodyNotes.length];
 
-        // Bass Synth Note
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
 
@@ -95,7 +93,6 @@ class SoundEngine {
         osc.start(now);
         osc.stop(now + stepDurationMs / 1000);
 
-        // Accent Hi-Hat Click every 4 steps
         if (this.bgmStep % 4 === 0) {
           const hatOsc = this.ctx.createOscillator();
           const hatGain = this.ctx.createGain();
@@ -147,7 +144,65 @@ class SoundEngine {
       osc.start(now);
       osc.stop(now + 0.12);
     } catch {
-      // Audio context error fallback
+      // Audio fallback
+    }
+  }
+
+  public playMissile() {
+    if (this.isMuted) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const now = this.ctx.currentTime;
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.exponentialRampToValueAtTime(900, now + 0.15);
+
+      gain.gain.setValueAtTime(this.volume * 0.45, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } catch {
+      // Audio fallback
+    }
+  }
+
+  public playFreeze() {
+    if (this.isMuted) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const notes = [880, 660, 440, 220];
+      notes.forEach((freq, idx) => {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const startTime = now + idx * 0.04;
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, startTime);
+
+        gain.gain.setValueAtTime(this.volume * 0.5, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.08);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(startTime);
+        osc.stop(startTime + 0.08);
+      });
+    } catch {
+      // Fallback
     }
   }
 
