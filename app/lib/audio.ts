@@ -51,7 +51,88 @@ class SoundEngine {
       osc.start(now);
       osc.stop(now + 0.12);
     } catch {
-      // Audio context error fallback
+      // Fallback
+    }
+  }
+
+  public playRailgun() {
+    if (this.isMuted) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const now = this.ctx.currentTime;
+
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.exponentialRampToValueAtTime(200, now + 0.25);
+
+      gain.gain.setValueAtTime(this.volume * 0.7, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.25);
+    } catch {
+      // Fallback
+    }
+  }
+
+  public playHoming() {
+    if (this.isMuted) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const now = this.ctx.currentTime;
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.linearRampToValueAtTime(950, now + 0.15);
+
+      gain.gain.setValueAtTime(this.volume * 0.45, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } catch {
+      // Fallback
+    }
+  }
+
+  public playWave() {
+    if (this.isMuted) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const now = this.ctx.currentTime;
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(500, now);
+      osc.frequency.exponentialRampToValueAtTime(150, now + 0.18);
+
+      gain.gain.setValueAtTime(this.volume * 0.6, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.18);
+    } catch {
+      // Fallback
     }
   }
 
@@ -64,7 +145,6 @@ class SoundEngine {
       const now = this.ctx.currentTime;
       const duration = isLarge ? 0.45 : 0.25;
 
-      // Create white noise buffer for crisp explosion boom
       const bufferSize = this.ctx.sampleRate * duration;
       const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
       const data = buffer.getChannelData(0);
@@ -75,7 +155,6 @@ class SoundEngine {
       const noise = this.ctx.createBufferSource();
       noise.buffer = buffer;
 
-      // Low pass filter for deep rumble
       const filter = this.ctx.createBiquadFilter();
       filter.type = 'lowpass';
       filter.frequency.setValueAtTime(isLarge ? 400 : 800, now);
@@ -189,7 +268,7 @@ class SoundEngine {
 
     try {
       const now = this.ctx.currentTime;
-      const notes = [440, 415, 392, 349]; // descending sad retro notes
+      const notes = [440, 415, 392, 349];
 
       notes.forEach((freq, idx) => {
         if (!this.ctx) return;

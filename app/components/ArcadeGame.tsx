@@ -11,7 +11,8 @@ import {
   FloatingText,
   Star,
   PowerUpType,
-  LeaderboardEntry
+  LeaderboardEntry,
+  WeaponType
 } from '../types/game';
 import { soundEngine } from '../lib/audio';
 
@@ -73,6 +74,8 @@ export default function ArcadeGame() {
     invulnerableTimer: 0,
     weaponType: 'single',
     weaponTimer: 0,
+    maxWeaponTimer: 600,
+    weaponLevel: 1,
     hasShield: false,
     shieldHits: 0,
     score: 0,
@@ -190,6 +193,8 @@ export default function ArcadeGame() {
       invulnerableTimer: 0,
       weaponType: 'single',
       weaponTimer: 0,
+      maxWeaponTimer: 600,
+      weaponLevel: 1,
       hasShield: false,
       shieldHits: 0,
       score: 0,
@@ -438,7 +443,8 @@ export default function ArcadeGame() {
           player.weaponTimer--;
           if (player.weaponTimer <= 0) {
             player.weaponType = 'single';
-            setActiveWeapon('SINGLE');
+            player.weaponLevel = 1;
+            setActiveWeapon('SINGLE LASER');
           }
         }
 
@@ -452,70 +458,95 @@ export default function ArcadeGame() {
 
         const isFiring = keysRef.current['Space'] || pointerRef.current.firing;
         if (isFiring && fireCooldownRef.current <= 0) {
-          fireCooldownRef.current = 10; // rate limit frames
-          soundEngine.playLaser();
+          const cooldownFrames = player.weaponLevel === 3 ? 6 : player.weaponLevel === 2 ? 8 : 10;
+          fireCooldownRef.current = cooldownFrames;
+
+          const px = player.x + player.width / 2;
+          const py = player.y;
 
           if (player.weaponType === 'triple') {
+            soundEngine.playLaser();
+            const spread = player.weaponLevel === 3 ? 3.2 : player.weaponLevel === 2 ? 2.5 : 1.8;
             bulletsRef.current.push(
-              {
-                id: Math.random().toString(),
-                x: player.x + player.width / 2,
-                y: player.y,
-                vx: 0,
-                vy: -11,
-                radius: 3,
-                color: '#00f0ff',
-                isPlayer: true,
-                damage: 1,
-              },
-              {
-                id: Math.random().toString(),
-                x: player.x + 4,
-                y: player.y + 6,
-                vx: -2.2,
-                vy: -10,
-                radius: 3,
-                color: '#ff007f',
-                isPlayer: true,
-                damage: 1,
-              },
-              {
-                id: Math.random().toString(),
-                x: player.x + player.width - 4,
-                y: player.y + 6,
-                vx: 2.2,
-                vy: -10,
-                radius: 3,
-                color: '#ff007f',
-                isPlayer: true,
-                damage: 1,
-              }
+              { id: Math.random().toString(), x: px, y: py, vx: 0, vy: -11, radius: 3.5, color: '#00f0ff', isPlayer: true, damage: 1, bulletType: 'triple' },
+              { id: Math.random().toString(), x: px - 6, y: py + 4, vx: -spread, vy: -10, radius: 3, color: '#ff007f', isPlayer: true, damage: 1, bulletType: 'triple' },
+              { id: Math.random().toString(), x: px + 6, y: py + 4, vx: spread, vy: -10, radius: 3, color: '#ff007f', isPlayer: true, damage: 1, bulletType: 'triple' }
             );
+            if (player.weaponLevel >= 2) {
+              bulletsRef.current.push(
+                { id: Math.random().toString(), x: px - 12, y: py + 8, vx: -spread * 1.6, vy: -9, radius: 3, color: '#ffe600', isPlayer: true, damage: 1, bulletType: 'triple' },
+                { id: Math.random().toString(), x: px + 12, y: py + 8, vx: spread * 1.6, vy: -9, radius: 3, color: '#ffe600', isPlayer: true, damage: 1, bulletType: 'triple' }
+              );
+            }
+          } else if (player.weaponType === 'railgun') {
+            soundEngine.playRailgun();
+            const boltRadius = player.weaponLevel === 3 ? 7 : 5;
+            const boltDmg = player.weaponLevel === 3 ? 4 : 2;
+            bulletsRef.current.push({
+              id: Math.random().toString(),
+              x: px,
+              y: py,
+              vx: 0,
+              vy: -15,
+              radius: boltRadius,
+              color: '#ffe600',
+              isPlayer: true,
+              damage: boltDmg,
+              piercing: true,
+              bulletType: 'railgun',
+            });
+            if (player.weaponLevel >= 2) {
+              bulletsRef.current.push(
+                { id: Math.random().toString(), x: px - 14, y: py + 6, vx: 0, vy: -15, radius: 4, color: '#00f0ff', isPlayer: true, damage: 2, piercing: true, bulletType: 'railgun' },
+                { id: Math.random().toString(), x: px + 14, y: py + 6, vx: 0, vy: -15, radius: 4, color: '#00f0ff', isPlayer: true, damage: 2, piercing: true, bulletType: 'railgun' }
+              );
+            }
+          } else if (player.weaponType === 'homing') {
+            soundEngine.playHoming();
+            const missileCount = player.weaponLevel === 3 ? 4 : player.weaponLevel === 2 ? 3 : 2;
+            for (let m = 0; m < missileCount; m++) {
+              const offsetX = (m - (missileCount - 1) / 2) * 12;
+              bulletsRef.current.push({
+                id: Math.random().toString(),
+                x: px + offsetX,
+                y: py,
+                vx: (Math.random() - 0.5) * 3,
+                vy: -7,
+                radius: 4,
+                color: '#ff007f',
+                isPlayer: true,
+                damage: 2,
+                isHoming: true,
+                bulletType: 'homing',
+              });
+            }
+          } else if (player.weaponType === 'wave') {
+            soundEngine.playWave();
+            const waveWidth = player.weaponLevel === 3 ? 14 : 9;
+            bulletsRef.current.push({
+              id: Math.random().toString(),
+              x: px,
+              y: py,
+              vx: 0,
+              vy: -9,
+              radius: waveWidth,
+              color: '#a855f7',
+              isPlayer: true,
+              damage: 2,
+              bulletType: 'wave',
+            });
+            if (player.weaponLevel >= 2) {
+              bulletsRef.current.push(
+                { id: Math.random().toString(), x: px - 18, y: py + 6, vx: -1.2, vy: -8, radius: 8, color: '#00f0ff', isPlayer: true, damage: 1, bulletType: 'wave' },
+                { id: Math.random().toString(), x: px + 18, y: py + 6, vx: 1.2, vy: -8, radius: 8, color: '#00f0ff', isPlayer: true, damage: 1, bulletType: 'wave' }
+              );
+            }
           } else {
-            // Dual laser default
+            // Default dual lasers
+            soundEngine.playLaser();
             bulletsRef.current.push(
-              {
-                id: Math.random().toString(),
-                x: player.x + 8,
-                y: player.y,
-                vx: 0,
-                vy: -11,
-                radius: 3.5,
-                color: '#00ff66',
-                isPlayer: true,
-                damage: 1,
-              },
-              {
-                id: Math.random().toString(),
-                x: player.x + player.width - 8,
-                y: player.y,
-                vx: 0,
-                vy: -11,
-                radius: 3.5,
-                color: '#00ff66',
-                isPlayer: true,
-                damage: 1,
-              }
+              { id: Math.random().toString(), x: player.x + 8, y: player.y, vx: 0, vy: -11, radius: 3.5, color: '#00ff66', isPlayer: true, damage: 1, bulletType: 'single' },
+              { id: Math.random().toString(), x: player.x + player.width - 8, y: player.y, vx: 0, vy: -11, radius: 3.5, color: '#00ff66', isPlayer: true, damage: 1, bulletType: 'single' }
             );
           }
         }
@@ -609,8 +640,31 @@ export default function ArcadeGame() {
           soundEngine.playPowerUp();
         }
 
-        // Update Bullets
+        // Update Bullets & Homing Missile Steer
         bulletsRef.current.forEach((b) => {
+          if (b.isHoming && b.isPlayer && enemiesRef.current.length > 0) {
+            let closestEnemy: Enemy | null = null;
+            let minDist = Infinity;
+            enemiesRef.current.forEach((enemy) => {
+              if (enemy.health > 0) {
+                const d = Math.hypot(enemy.x + enemy.width / 2 - b.x, enemy.y + enemy.height / 2 - b.y);
+                if (d < minDist) {
+                  minDist = d;
+                  closestEnemy = enemy;
+                }
+              }
+            });
+
+            if (closestEnemy) {
+              const targetX = (closestEnemy as Enemy).x + (closestEnemy as Enemy).width / 2;
+              const targetY = (closestEnemy as Enemy).y + (closestEnemy as Enemy).height / 2;
+              const angle = Math.atan2(targetY - b.y, targetX - b.x);
+              const speed = 9;
+              b.vx += (Math.cos(angle) * speed - b.vx) * 0.15;
+              b.vy += (Math.sin(angle) * speed - b.vy) * 0.15;
+            }
+          }
+
           b.x += b.vx;
           b.y += b.vy;
         });
@@ -642,6 +696,7 @@ export default function ArcadeGame() {
                   color: '#ff007f',
                   isPlayer: false,
                   damage: 1,
+                  bulletType: 'enemy',
                 });
               }
             }
@@ -685,7 +740,11 @@ export default function ArcadeGame() {
               bullet.y <= enemy.y + enemy.height;
 
             if (isColliding) {
-              bullet.damage = 0; // Destroy bullet
+              if (!bullet.piercing) {
+                bullet.damage = 0;
+              } else {
+                bullet.damage -= 1;
+              }
               enemy.health -= 1;
               soundEngine.playHit();
 
@@ -746,15 +805,27 @@ export default function ArcadeGame() {
                   }
                 }
 
-                // Drop Power-Up chance (20%)
-                if (Math.random() < 0.22 || enemy.type === 'saucer') {
-                  const types: PowerUpType[] = ['triple', 'shield', 'bomb', 'life'];
+                // Drop Power-Up chance (25%)
+                if (Math.random() < 0.25 || enemy.type === 'saucer') {
+                  const types: PowerUpType[] = ['w_triple', 'w_railgun', 'w_homing', 'w_wave', 'shield', 'bomb', 'life'];
                   const selectedType = types[Math.floor(Math.random() * types.length)];
                   const colorMap: Record<PowerUpType, string> = {
-                    triple: '#00f0ff',
-                    shield: '#ff007f',
+                    w_triple: '#00f0ff',
+                    w_railgun: '#ffe600',
+                    w_homing: '#ff007f',
+                    w_wave: '#a855f7',
+                    shield: '#00f0ff',
                     bomb: '#ffe600',
                     life: '#00ff66',
+                  };
+                  const labelMap: Record<PowerUpType, string> = {
+                    w_triple: '3X',
+                    w_railgun: 'RAIL',
+                    w_homing: 'SEEK',
+                    w_wave: 'WAVE',
+                    shield: 'SH',
+                    bomb: 'B',
+                    life: '+1',
                   };
 
                   powerUpsRef.current.push({
@@ -764,8 +835,9 @@ export default function ArcadeGame() {
                     vy: 1.4,
                     type: selectedType,
                     color: colorMap[selectedType],
-                    size: 20,
+                    size: 22,
                     pulsePhase: 0,
+                    label: labelMap[selectedType],
                   });
                 }
               }
@@ -788,16 +860,39 @@ export default function ArcadeGame() {
             soundEngine.playPowerUp();
             pu.y = CANVAS_HEIGHT + 100; // remove
 
-            if (pu.type === 'triple') {
-              player.weaponType = 'triple';
-              player.weaponTimer = 500; // 8 seconds of triple shot
-              setActiveWeapon('TRIPLE LASER');
-              addFloatingText(player.x, player.y - 20, 'TRIPLE LASERS!', '#00f0ff');
+            if (pu.type === 'w_triple' || pu.type === 'w_railgun' || pu.type === 'w_homing' || pu.type === 'w_wave') {
+              const targetTypeMap: Record<string, WeaponType> = {
+                w_triple: 'triple',
+                w_railgun: 'railgun',
+                w_homing: 'homing',
+                w_wave: 'wave',
+              };
+              const nameMap: Record<WeaponType, string> = {
+                single: 'SINGLE LASER',
+                triple: 'TRIPLE SHOT',
+                railgun: 'RAILGUN',
+                homing: 'HOMING MISSILES',
+                wave: 'WAVE BLASTER',
+              };
+
+              const targetWeapon = targetTypeMap[pu.type];
+              if (player.weaponType === targetWeapon) {
+                player.weaponLevel = Math.min(3, player.weaponLevel + 1);
+              } else {
+                player.weaponType = targetWeapon;
+                player.weaponLevel = 1;
+              }
+
+              player.weaponTimer = 600; // ~10 seconds
+              player.maxWeaponTimer = 600;
+              const levelLabel = player.weaponLevel === 3 ? 'MAX POWER!' : `LVL ${player.weaponLevel}`;
+              setActiveWeapon(`${nameMap[targetWeapon]} ${levelLabel}`);
+              addFloatingText(player.x - 15, player.y - 25, `${nameMap[targetWeapon]} ${levelLabel}`, pu.color);
             } else if (pu.type === 'shield') {
               player.hasShield = true;
               player.shieldHits = 2;
               setShieldActive(true);
-              addFloatingText(player.x, player.y - 20, 'SHIELD ACTIVATED!', '#ff007f');
+              addFloatingText(player.x, player.y - 20, 'SHIELD ACTIVATED!', '#00f0ff');
             } else if (pu.type === 'bomb') {
               if (player.bombs < player.maxBombs) {
                 player.bombs += 1;
@@ -983,7 +1078,7 @@ export default function ArcadeGame() {
         ctx.font = '10px "Press Start 2P", monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const label = pu.type === 'triple' ? '3X' : pu.type === 'shield' ? 'SH' : pu.type === 'bomb' ? 'B' : '+1';
+        const label = pu.label || 'PU';
         ctx.fillText(label, 0, 1);
 
         ctx.restore();
@@ -1222,6 +1317,44 @@ export default function ArcadeGame() {
         ctx.lineTo(lx - 6, ly + 6);
         ctx.closePath();
         ctx.fill();
+      }
+
+      // Active Weapon Timer & Level Bar (Sub-HUD)
+      if (playerRef.current.weaponType !== 'single' && playerRef.current.weaponTimer > 0) {
+        const pct = Math.max(0, playerRef.current.weaponTimer / playerRef.current.maxWeaponTimer);
+        const weaponColors: Record<WeaponType, string> = {
+          single: '#00ff66',
+          triple: '#00f0ff',
+          railgun: '#ffe600',
+          homing: '#ff007f',
+          wave: '#a855f7',
+        };
+        const activeColor = weaponColors[playerRef.current.weaponType];
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(16, 44, 220, 14);
+        ctx.strokeStyle = activeColor;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(16, 44, 220, 14);
+
+        ctx.fillStyle = activeColor;
+        ctx.shadowColor = activeColor;
+        ctx.shadowBlur = 4;
+        ctx.fillRect(17, 45, 218 * pct, 12);
+
+        ctx.font = '8px "Press Start 2P", monospace';
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = 0;
+        ctx.textAlign = 'left';
+        const nameMap: Record<WeaponType, string> = {
+          single: 'SINGLE',
+          triple: 'TRIPLE SHOT',
+          railgun: 'RAILGUN',
+          homing: 'HOMING',
+          wave: 'WAVE BLASTER',
+        };
+        const lvlTag = playerRef.current.weaponLevel === 3 ? 'MAX' : `LVL ${playerRef.current.weaponLevel}`;
+        ctx.fillText(`${nameMap[playerRef.current.weaponType]} ${lvlTag}`, 22, 54);
       }
 
       ctx.restore();

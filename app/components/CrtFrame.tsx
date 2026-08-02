@@ -131,20 +131,21 @@ export default function CrtFrame() {
             <div className="space-y-2 bg-black/40 p-3 rounded-lg border border-stone-800">
               <p className="text-[#00f0ff] font-bold">🕹️ FLIGHT CONTROLS</p>
               <ul className="space-y-1 font-mono text-[11px]">
-                <li><strong className="text-white">W / A / S / D or ARROWS:</strong> Move Ship</li>
-                <li><strong className="text-white">SPACEBAR:</strong> Fire Plasma Lasers</li>
-                <li><strong className="text-white">P or ESC:</strong> Pause Game</li>
-                <li><strong className="text-white">M:</strong> Toggle Audio Synth</li>
+                <li><strong className="text-white">WASD / ARROWS / MOUSE / TOUCH:</strong> Move Ship</li>
+                <li><strong className="text-white">SPACE / LEFT-CLICK / TAP:</strong> Fire Weapon</li>
+                <li><strong className="text-white">B or E KEY / BOMB BUTTON:</strong> Deploy EMP Bomb</li>
+                <li><strong className="text-white">P or ESC:</strong> Pause Game    <strong className="text-white">M:</strong> Mute Audio</li>
               </ul>
             </div>
 
             <div className="space-y-2 bg-black/40 p-3 rounded-lg border border-stone-800">
-              <p className="text-[#ff007f] font-bold">⚡ POWER-UP DROPS</p>
-              <ul className="space-y-1 font-mono text-[11px]">
-                <li><strong className="text-[#00f0ff]">3X (Triple Laser):</strong> Spreads 3 plasma beams</li>
-                <li><strong className="text-[#ff007f]">SH (Shield):</strong> Absorbs 2 enemy hits</li>
-                <li><strong className="text-[#ffe600]">B (EMP Bomb):</strong> Clears all screen enemies</li>
-                <li><strong className="text-[#00ff66]">+1 (Extra Ship):</strong> Restores 1 player life</li>
+              <p className="text-[#ff007f] font-bold">⚡ WEAPONS & POWER-UPS (LEVEL UP 1➔3)</p>
+              <ul className="space-y-1 font-mono text-[10px]">
+                <li><strong className="text-[#00f0ff]">3X (Triple Cone):</strong> Wide multi-beam spread</li>
+                <li><strong className="text-[#ffe600]">RAIL (Piercing Railgun):</strong> Heavy piercing plasma bolts</li>
+                <li><strong className="text-[#ff007f]">SEEK (Homing Missiles):</strong> Auto-tracking micro-rockets</li>
+                <li><strong className="text-[#a855f7]">WAVE (Wave Blaster):</strong> Screen arc pulse waves</li>
+                <li><strong className="text-[#00f0ff]">SH (Shield):</strong> Absorbs 2 hits  <strong className="text-[#ffe600]">B:</strong> +1 Bomb</li>
               </ul>
             </div>
           </div>

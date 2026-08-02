@@ -1,5 +1,7 @@
 export type GameStateMode = 'START' | 'PLAYING' | 'PAUSED' | 'GAMEOVER';
 
+export type WeaponType = 'single' | 'triple' | 'railgun' | 'homing' | 'wave';
+
 export interface Position {
   x: number;
   y: number;
@@ -27,8 +29,10 @@ export interface Player {
   bombs: number;
   maxBombs: number;
   invulnerableTimer: number;
-  weaponType: 'single' | 'double' | 'triple';
+  weaponType: WeaponType;
   weaponTimer: number;
+  maxWeaponTimer: number;
+  weaponLevel: number; // 1, 2, or 3 (MAX)
   hasShield: boolean;
   shieldHits: number;
   score: number;
@@ -46,6 +50,10 @@ export interface Bullet {
   color: string;
   isPlayer: boolean;
   damage: number;
+  piercing?: boolean;
+  isHoming?: boolean;
+  targetEnemyId?: string;
+  bulletType?: WeaponType | 'enemy';
 }
 
 export type EnemyType = 'invader' | 'asteroid_lg' | 'asteroid_md' | 'asteroid_sm' | 'saucer';
@@ -84,7 +92,7 @@ export interface Particle {
   shape?: 'square' | 'circle' | 'spark';
 }
 
-export type PowerUpType = 'triple' | 'shield' | 'bomb' | 'life';
+export type PowerUpType = 'w_triple' | 'w_railgun' | 'w_homing' | 'w_wave' | 'shield' | 'bomb' | 'life';
 
 export interface PowerUp {
   id: string;
@@ -95,6 +103,7 @@ export interface PowerUp {
   color: string;
   size: number;
   pulsePhase: number;
+  label: string;
 }
 
 export interface FloatingText {
