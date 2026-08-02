@@ -2,12 +2,15 @@
 
 import React, { useState } from 'react';
 import ArcadeGame from './ArcadeGame';
-import { Volume2, VolumeX, Monitor, Power, Zap, HelpCircle, Shield, Radio } from 'lucide-react';
+import { Volume2, VolumeX, Monitor, Power, Zap, HelpCircle, Radio, Music, Palette } from 'lucide-react';
 import { soundEngine } from '../lib/audio';
+import { CrtThemeMode } from '../types/game';
 
 export default function CrtFrame() {
   const [isPowerOn, setIsPowerOn] = useState<boolean>(true);
   const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [isBgmMuted, setIsBgmMuted] = useState<boolean>(false);
+  const [crtTheme, setCrtTheme] = useState<CrtThemeMode>('NEON');
   const [showInstructions, setShowInstructions] = useState<boolean>(false);
 
   const togglePower = () => {
@@ -17,6 +20,17 @@ export default function CrtFrame() {
   const toggleMute = () => {
     const muted = soundEngine.toggleMute();
     setIsMuted(muted);
+  };
+
+  const toggleBgm = () => {
+    const bgmMuted = soundEngine.toggleBGM();
+    setIsBgmMuted(bgmMuted);
+  };
+
+  const cycleTheme = () => {
+    const themes: CrtThemeMode[] = ['NEON', 'PHOSPHOR_GREEN', 'AMBER_CRT', 'MONOCHROME'];
+    const nextIdx = (themes.indexOf(crtTheme) + 1) % themes.length;
+    setCrtTheme(themes[nextIdx]);
   };
 
   return (
@@ -33,7 +47,7 @@ export default function CrtFrame() {
           </div>
           <div className="flex items-center space-x-2 text-[9px] sm:text-[10px] text-[#00ff66]/80 font-mono tracking-widest uppercase">
             <Radio className="w-3.5 h-3.5 text-[#00ff66] animate-pulse" />
-            <span>NTSC-US 60Hz RGB</span>
+            <span>NTSC-US 60Hz RGB • THEME: {crtTheme}</span>
           </div>
           <div className="hidden sm:flex space-x-1.5">
             {[...Array(6)].map((_, i) => (
@@ -45,7 +59,7 @@ export default function CrtFrame() {
         {/* Inner Curved CRT Screen Bezel */}
         <div className="relative w-full bg-[#0a0810] rounded-xl sm:rounded-[24px] p-1.5 sm:p-4 border-4 sm:border-8 border-[#12101b] shadow-[inset_0_4px_12px_rgba(0,0,0,0.9)] overflow-hidden">
           {isPowerOn ? (
-            <ArcadeGame />
+            <ArcadeGame theme={crtTheme} isBgmMuted={isBgmMuted} />
           ) : (
             <div className="w-full aspect-[4/3] bg-[#020503] rounded-lg flex flex-col items-center justify-center text-center p-6 border border-[#00ff66]/10">
               <div className="w-16 h-1 bg-[#00ff66]/40 rounded-full animate-pulse mb-4" />
@@ -73,13 +87,13 @@ export default function CrtFrame() {
           </div>
 
           {/* Physical TV Buttons & Knobs */}
-          <div className="flex items-center space-x-3 sm:space-x-4">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
             
             {/* Power Toggle Button */}
             <button
               onClick={togglePower}
               title="Power Toggle"
-              className={`p-2.5 rounded-xl border transition-all flex items-center space-x-1.5 text-xs font-retro ${
+              className={`p-2 sm:p-2.5 rounded-xl border transition-all flex items-center space-x-1.5 text-xs font-retro ${
                 isPowerOn
                   ? 'bg-gradient-to-b from-[#00ff66]/20 to-[#00ff66]/5 border-[#00ff66] text-[#00ff66] shadow-[0_0_12px_rgba(0,255,102,0.3)]'
                   : 'bg-stone-900 border-stone-700 text-stone-500'
@@ -89,23 +103,43 @@ export default function CrtFrame() {
               <span className="hidden sm:inline">POWER</span>
             </button>
 
-            {/* Mute Button */}
+            {/* CRT Theme Switcher Button */}
+            <button
+              onClick={cycleTheme}
+              title="Cycle CRT Color Theme"
+              className="p-2 sm:p-2.5 rounded-xl bg-stone-900 border border-stone-700 text-[#ffe600] hover:border-[#ffe600] transition-all flex items-center space-x-1.5 text-xs font-retro active:scale-95"
+            >
+              <Palette className="w-4 h-4 text-[#ffe600]" />
+              <span className="hidden sm:inline">THEME ({crtTheme})</span>
+            </button>
+
+            {/* BGM Music Toggle Button */}
+            <button
+              onClick={toggleBgm}
+              title="Toggle Background Music Synth"
+              className="p-2 sm:p-2.5 rounded-xl bg-stone-900 border border-stone-700 text-[#ff007f] hover:border-[#ff007f] transition-all flex items-center space-x-1.5 text-xs font-retro active:scale-95"
+            >
+              <Music className="w-4 h-4 text-[#ff007f]" />
+              <span className="hidden sm:inline">{isBgmMuted ? 'BGM OFF' : 'BGM ON'}</span>
+            </button>
+
+            {/* Mute SFX Button */}
             <button
               onClick={toggleMute}
-              title="Toggle Audio Synth"
-              className="p-2.5 rounded-xl bg-stone-900 border border-stone-700 text-[#00f0ff] hover:border-[#00f0ff] transition-all flex items-center space-x-1.5 text-xs font-retro"
+              title="Toggle Audio Synth SFX"
+              className="p-2 sm:p-2.5 rounded-xl bg-stone-900 border border-stone-700 text-[#00f0ff] hover:border-[#00f0ff] transition-all flex items-center space-x-1.5 text-xs font-retro active:scale-95"
             >
               {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-[#00f0ff]" />}
-              <span className="hidden sm:inline">{isMuted ? 'MUTED' : 'AUDIO'}</span>
+              <span className="hidden sm:inline">{isMuted ? 'MUTED' : 'SFX'}</span>
             </button>
 
             {/* Help / Controls Button */}
             <button
               onClick={() => setShowInstructions(!showInstructions)}
               title="Game Instructions"
-              className="p-2.5 rounded-xl bg-stone-900 border border-stone-700 text-[#ffe600] hover:border-[#ffe600] transition-all flex items-center space-x-1.5 text-xs font-retro"
+              className="p-2 sm:p-2.5 rounded-xl bg-stone-900 border border-stone-700 text-[#00ff66] hover:border-[#00ff66] transition-all flex items-center space-x-1.5 text-xs font-retro active:scale-95"
             >
-              <HelpCircle className="w-4 h-4 text-[#ffe600]" />
+              <HelpCircle className="w-4 h-4 text-[#00ff66]" />
               <span className="hidden sm:inline">GUIDE</span>
             </button>
           </div>
@@ -131,20 +165,20 @@ export default function CrtFrame() {
             <div className="space-y-2 bg-black/40 p-3 rounded-lg border border-stone-800">
               <p className="text-[#00f0ff] font-bold">🕹️ FLIGHT CONTROLS</p>
               <ul className="space-y-1 font-mono text-[11px]">
-                <li><strong className="text-white">W / A / S / D or ARROWS:</strong> Move Ship</li>
-                <li><strong className="text-white">SPACEBAR:</strong> Fire Plasma Lasers</li>
-                <li><strong className="text-white">P or ESC:</strong> Pause Game</li>
-                <li><strong className="text-white">M:</strong> Toggle Audio Synth</li>
+                <li><strong className="text-white">WASD / ARROWS / MOUSE / TOUCH DRAG:</strong> Move Ship</li>
+                <li><strong className="text-white">SPACEBAR / CLICK:</strong> Fire Plasma Lasers</li>
+                <li><strong className="text-white">B or E KEY:</strong> Launch EMP Bomb</li>
+                <li><strong className="text-white">P or ESC:</strong> Pause Game    <strong className="text-white">M:</strong> Mute SFX</li>
               </ul>
             </div>
 
             <div className="space-y-2 bg-black/40 p-3 rounded-lg border border-stone-800">
-              <p className="text-[#ff007f] font-bold">⚡ POWER-UP DROPS</p>
+              <p className="text-[#ff007f] font-bold">⚡ POWER-UPS & BOSSES</p>
               <ul className="space-y-1 font-mono text-[11px]">
                 <li><strong className="text-[#00f0ff]">3X (Triple Laser):</strong> Spreads 3 plasma beams</li>
                 <li><strong className="text-[#ff007f]">SH (Shield):</strong> Absorbs 2 enemy hits</li>
-                <li><strong className="text-[#ffe600]">B (EMP Bomb):</strong> Clears all screen enemies</li>
-                <li><strong className="text-[#00ff66]">+1 (Extra Ship):</strong> Restores 1 player life</li>
+                <li><strong className="text-[#ffe600]">B (EMP Bomb):</strong> Clears screen enemies</li>
+                <li><strong className="text-[#ff007f]">MOTHER-SHIP BOSS:</strong> Spawns at Wave 5 & 10!</li>
               </ul>
             </div>
           </div>

@@ -1,5 +1,7 @@
 export type GameStateMode = 'START' | 'PLAYING' | 'PAUSED' | 'GAMEOVER';
 
+export type CrtThemeMode = 'NEON' | 'PHOSPHOR_GREEN' | 'AMBER_CRT' | 'MONOCHROME';
+
 export interface Position {
   x: number;
   y: number;
@@ -14,6 +16,14 @@ export interface LeaderboardEntry {
   name: string;
   score: number;
   date: string;
+}
+
+export interface CrtSettings {
+  theme: CrtThemeMode;
+  scanlineOpacity: number; // 0.0 to 1.0
+  flickerEnabled: boolean;
+  vignetteEnabled: boolean;
+  bgmMuted: boolean;
 }
 
 export interface Player {
@@ -48,7 +58,7 @@ export interface Bullet {
   damage: number;
 }
 
-export type EnemyType = 'invader' | 'asteroid_lg' | 'asteroid_md' | 'asteroid_sm' | 'saucer';
+export type EnemyType = 'invader' | 'asteroid_lg' | 'asteroid_md' | 'asteroid_sm' | 'saucer' | 'boss';
 
 export interface Enemy {
   id: string;
@@ -68,6 +78,11 @@ export interface Enemy {
   zigzagPhase?: number;
   zigzagSpeed?: number;
   shootTimer?: number;
+  bossPhase?: number;
+  bossAttackTimer?: number;
+  bossShieldAngle?: number;
+  laserBeamActive?: boolean;
+  laserBeamWidth?: number;
 }
 
 export interface Particle {

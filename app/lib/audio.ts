@@ -1,9 +1,15 @@
-// Web Audio API Procedural 8-Bit Sound Synthesizer
+// Web Audio API Procedural 8-Bit Sound Synthesizer & BGM Engine
 
 class SoundEngine {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
+  private isBgmMuted: boolean = false;
   private volume: number = 0.3;
+
+  // BGM Sequencer State
+  private bgmIntervalId: number | null = null;
+  private bgmStep: number = 0;
+  private bgmBpm: number = 135;
 
   private initCtx() {
     if (!this.ctx && typeof window !== 'undefined') {
@@ -19,11 +25,102 @@ class SoundEngine {
 
   public toggleMute(): boolean {
     this.isMuted = !this.isMuted;
+    if (this.isMuted) {
+      this.stopBGM();
+    } else if (!this.isBgmMuted) {
+      this.startBGM();
+    }
     return this.isMuted;
   }
 
   public getMuted(): boolean {
     return this.isMuted;
+  }
+
+  public toggleBGM(): boolean {
+    this.isBgmMuted = !this.isBgmMuted;
+    if (this.isBgmMuted) {
+      this.stopBGM();
+    } else if (!this.isMuted) {
+      this.startBGM();
+    }
+    return this.isBgmMuted;
+  }
+
+  public getBgmMuted(): boolean {
+    return this.isBgmMuted;
+  }
+
+  public setBGMTempo(bpm: number) {
+    this.bgmBpm = Math.min(200, Math.max(100, bpm));
+    if (this.bgmIntervalId !== null) {
+      this.stopBGM();
+      this.startBGM();
+    }
+  }
+
+  public startBGM() {
+    if (this.isMuted || this.isBgmMuted || this.bgmIntervalId !== null) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    // 16-step Retro Arcade Arpeggiated Melody Notes (frequencies in Hz)
+    const melodyNotes = [
+      110, 164.81, 220, 329.63, 110, 164.81, 220, 261.63,
+      130.81, 196, 261.63, 392, 130.81, 196, 261.63, 329.63,
+    ];
+
+    const stepDurationMs = (60 / this.bgmBpm / 4) * 1000;
+
+    this.bgmIntervalId = window.setInterval(() => {
+      if (!this.ctx || this.isMuted || this.isBgmMuted) return;
+
+      try {
+        const now = this.ctx.currentTime;
+        const noteFreq = melodyNotes[this.bgmStep % melodyNotes.length];
+
+        // Bass Synth Note
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(noteFreq, now);
+
+        gain.gain.setValueAtTime(this.volume * 0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + stepDurationMs / 1000);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + stepDurationMs / 1000);
+
+        // Accent Hi-Hat Click every 4 steps
+        if (this.bgmStep % 4 === 0) {
+          const hatOsc = this.ctx.createOscillator();
+          const hatGain = this.ctx.createGain();
+          hatOsc.type = 'square';
+          hatOsc.frequency.setValueAtTime(800, now);
+          hatGain.gain.setValueAtTime(this.volume * 0.08, now);
+          hatGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+          hatOsc.connect(hatGain);
+          hatGain.connect(this.ctx.destination);
+          hatOsc.start(now);
+          hatOsc.stop(now + 0.03);
+        }
+
+        this.bgmStep++;
+      } catch {
+        // Fallback
+      }
+    }, stepDurationMs);
+  }
+
+  public stopBGM() {
+    if (this.bgmIntervalId !== null) {
+      clearInterval(this.bgmIntervalId);
+      this.bgmIntervalId = null;
+    }
   }
 
   public playLaser() {
@@ -38,7 +135,6 @@ class SoundEngine {
       osc.type = 'sawtooth';
       const now = this.ctx.currentTime;
 
-      // Frequency glide from high to low (classic retro laser pitch drop)
       osc.frequency.setValueAtTime(880, now);
       osc.frequency.exponentialRampToValueAtTime(110, now + 0.12);
 
@@ -62,9 +158,8 @@ class SoundEngine {
 
     try {
       const now = this.ctx.currentTime;
-      const duration = isLarge ? 0.45 : 0.25;
+      const duration = isLarge ? 0.55 : 0.25;
 
-      // Create white noise buffer for crisp explosion boom
       const bufferSize = this.ctx.sampleRate * duration;
       const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
       const data = buffer.getChannelData(0);
@@ -75,14 +170,13 @@ class SoundEngine {
       const noise = this.ctx.createBufferSource();
       noise.buffer = buffer;
 
-      // Low pass filter for deep rumble
       const filter = this.ctx.createBiquadFilter();
       filter.type = 'lowpass';
       filter.frequency.setValueAtTime(isLarge ? 400 : 800, now);
       filter.frequency.linearRampToValueAtTime(80, now + duration);
 
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(this.volume * (isLarge ? 0.8 : 0.6), now);
+      gain.gain.setValueAtTime(this.volume * (isLarge ? 0.95 : 0.6), now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
 
       noise.connect(filter);
@@ -184,12 +278,13 @@ class SoundEngine {
 
   public playGameOver() {
     if (this.isMuted) return;
+    this.stopBGM();
     this.initCtx();
     if (!this.ctx) return;
 
     try {
       const now = this.ctx.currentTime;
-      const notes = [440, 415, 392, 349]; // descending sad retro notes
+      const notes = [440, 415, 392, 349];
 
       notes.forEach((freq, idx) => {
         if (!this.ctx) return;
