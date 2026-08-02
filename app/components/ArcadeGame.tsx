@@ -11,9 +11,7 @@ import {
   FloatingText,
   Star,
   PowerUpType,
-  WeaponType,
-  LeaderboardEntry,
-  CrtThemeMode,
+  LeaderboardEntry
 } from '../types/game';
 import { soundEngine } from '../lib/audio';
 
@@ -30,34 +28,7 @@ const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
   { name: 'RAD', score: 2800, date: '1984-09-01' },
 ];
 
-const getThemePalette = (theme: CrtThemeMode = 'NEON') => {
-  switch (theme) {
-    case 'PHOSPHOR_GREEN':
-      return { primary: '#00ff66', secondary: '#00e65c', accent: '#00cc4b', gold: '#00ff66', bg: '#030a05' };
-    case 'AMBER_CRT':
-      return { primary: '#ff9900', secondary: '#ffaa33', accent: '#cc7a00', gold: '#ffcc00', bg: '#0c0702' };
-    case 'MONOCHROME':
-      return { primary: '#ffffff', secondary: '#dddddd', accent: '#888888', gold: '#ffffff', bg: '#080808' };
-    case 'NEON':
-    default:
-      return { primary: '#00ff66', secondary: '#00f0ff', accent: '#ff007f', gold: '#ffe600', bg: '#030806' };
-  }
-};
-
-const getLevelDetails = (waveNum: number) => {
-  if (waveNum <= 3) return { level: 1, name: 'LEVEL 1: DEEP SPACE PATROL' };
-  if (waveNum <= 6) return { level: 2, name: 'LEVEL 2: ASTEROID BELT HAZARD' };
-  if (waveNum <= 9) return { level: 3, name: 'LEVEL 3: NEBULA PLASMA STORM' };
-  if (waveNum <= 12) return { level: 4, name: 'LEVEL 4: ALIEN ARMADA BASE' };
-  return { level: 5, name: 'LEVEL 5: CORE OVERLORD' };
-};
-
-interface ArcadeGameProps {
-  theme?: CrtThemeMode;
-  isBgmMuted?: boolean;
-}
-
-export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: ArcadeGameProps) {
+export default function ArcadeGame() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // React State for UI & CRT Controls
@@ -69,9 +40,8 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
   const [wave, setWave] = useState<number>(1);
   const [multiplier, setMultiplier] = useState<number>(1);
   const [isMuted, setIsMuted] = useState<boolean>(false);
-  const [activeWeapon, setActiveWeapon] = useState<string>('SINGLE LASERS');
+  const [activeWeapon, setActiveWeapon] = useState<string>('SINGLE');
   const [shieldActive, setShieldActive] = useState<boolean>(false);
-  const [activeLevelName, setActiveLevelName] = useState<string>('LEVEL 1: DEEP SPACE PATROL');
 
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(DEFAULT_LEADERBOARD);
@@ -88,14 +58,6 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
   const multiplierRef = useRef<number>(1);
   const multiplierTimerRef = useRef<number>(0);
 
-  // Level & Banner Ref
-  const levelBannerTextRef = useRef<string>('LEVEL 1: DEEP SPACE PATROL');
-  const levelBannerTimerRef = useRef<number>(120);
-
-  // Combo & Streak Counters
-  const comboCountRef = useRef<number>(0);
-  const comboTimerRef = useRef<number>(0);
-
   // Entity storage refs
   const keysRef = useRef<{ [key: string]: boolean }>({});
   const playerRef = useRef<Player>({
@@ -111,8 +73,6 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
     invulnerableTimer: 0,
     weaponType: 'single',
     weaponTimer: 0,
-    timeFreezeTimer: 0,
-    overdriveTimer: 0,
     hasShield: false,
     shieldHits: 0,
     score: 0,
@@ -195,9 +155,8 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
     }
 
     // Generate initial starfield
-    const palette = getThemePalette(theme);
     const stars: Star[] = [];
-    const colors = [palette.primary, palette.secondary, palette.accent, palette.gold, '#ffffff'];
+    const colors = ['#ffffff', '#00ff66', '#00f0ff', '#ff007f', '#ffe600'];
     for (let i = 0; i < 85; i++) {
       stars.push({
         x: Math.random() * CANVAS_WIDTH,
@@ -209,7 +168,7 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
       });
     }
     starsRef.current = stars;
-  }, [theme]);
+  }, []);
 
   // Sync ref with React state
   useEffect(() => {
@@ -231,8 +190,6 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
       invulnerableTimer: 0,
       weaponType: 'single',
       weaponTimer: 0,
-      timeFreezeTimer: 0,
-      overdriveTimer: 0,
       hasShield: false,
       shieldHits: 0,
       score: 0,
@@ -250,30 +207,19 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
     waveRef.current = 1;
     multiplierRef.current = 1;
     multiplierTimerRef.current = 0;
-    comboCountRef.current = 0;
-    comboTimerRef.current = 0;
-
-    levelBannerTextRef.current = 'LEVEL 1: DEEP SPACE PATROL';
-    levelBannerTimerRef.current = 120;
-    setActiveLevelName('LEVEL 1: DEEP SPACE PATROL');
 
     setScore(0);
     setLives(3);
     setBombs(2);
     setWave(1);
     setMultiplier(1);
-    setActiveWeapon('SINGLE LASERS');
+    setActiveWeapon('SINGLE');
     setShieldActive(false);
     setSavedScore(false);
 
     setGameState('PLAYING');
     stateRef.current = 'PLAYING';
-
-    soundEngine.setBGMTempo(135);
-    if (!isBgmMuted) {
-      soundEngine.startBGM();
-    }
-  }, [isBgmMuted]);
+  }, []);
 
   // Screen shake trigger helper
   const addScreenShake = (intensity: number) => {
@@ -366,37 +312,40 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
   // Keyboard Event Handlers
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent browser default scrolling for arcade control keys
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyE'].includes(e.code)) {
         e.preventDefault();
       }
 
       keysRef.current[e.code] = true;
 
+      // Start or Restart with Space
       if (e.code === 'Space') {
         if (stateRef.current === 'START' || stateRef.current === 'GAMEOVER') {
           resetGame();
         }
       }
 
+      // EMP Bomb key (B, E, or Shift)
       if (e.code === 'KeyB' || e.code === 'KeyE') {
         if (stateRef.current === 'PLAYING') {
           triggerEMPBomb();
         }
       }
 
+      // Pause toggle with P or Escape
       if (e.code === 'KeyP' || e.code === 'Escape') {
         e.preventDefault();
         if (stateRef.current === 'PLAYING') {
           setGameState('PAUSED');
           stateRef.current = 'PAUSED';
-          soundEngine.stopBGM();
         } else if (stateRef.current === 'PAUSED') {
           setGameState('PLAYING');
           stateRef.current = 'PLAYING';
-          if (!isBgmMuted) soundEngine.startBGM();
         }
       }
 
+      // Audio Mute toggle with M
       if (e.code === 'KeyM') {
         const muted = soundEngine.toggleMute();
         setIsMuted(muted);
@@ -404,7 +353,7 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyE'].includes(e.code)) {
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
         e.preventDefault();
       }
       keysRef.current[e.code] = false;
@@ -417,7 +366,7 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [resetGame, isBgmMuted]);
+  }, [resetGame]);
 
   // Main Canvas Game Tick & Render Pipeline
   useEffect(() => {
@@ -427,11 +376,11 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
     if (!ctx) return;
 
     let tick = 0;
-    const palette = getThemePalette(theme);
 
     const gameLoop = (timestamp: number) => {
       tick++;
 
+      // Delta time calculation
       if (!lastTimeRef.current) lastTimeRef.current = timestamp;
       lastTimeRef.current = timestamp;
 
@@ -440,20 +389,6 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
       // -------------------------------------------------------------
       if (stateRef.current === 'PLAYING') {
         const player = playerRef.current;
-
-        // Time-Freeze & Overdrive Scaling
-        const isTimeFrozen = player.timeFreezeTimer > 0;
-        const isOverdrive = player.overdriveTimer > 0;
-        const enemySpeedScale = isTimeFrozen ? 0.4 : 1.0;
-        const playerSpeedScale = isOverdrive ? 1.6 : 1.0;
-
-        if (player.timeFreezeTimer > 0) player.timeFreezeTimer--;
-        if (player.overdriveTimer > 0) player.overdriveTimer--;
-
-        // Level Banner Decay
-        if (levelBannerTimerRef.current > 0) {
-          levelBannerTimerRef.current--;
-        }
 
         // Player Movement Controls (Keyboard, Mouse, or Touch)
         let dx = 0;
@@ -469,15 +404,16 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
             dx *= 0.7071;
             dy *= 0.7071;
           }
-          player.x += dx * player.speed * playerSpeedScale;
-          player.y += dy * player.speed * playerSpeedScale;
+          player.x += dx * player.speed;
+          player.y += dy * player.speed;
         } else if (pointerRef.current.active) {
           const targetX = pointerRef.current.x - player.width / 2;
           const targetY = pointerRef.current.y - player.height / 2;
-          player.x += (targetX - player.x) * 0.25 * playerSpeedScale;
-          player.y += (targetY - player.y) * 0.25 * playerSpeedScale;
+          player.x += (targetX - player.x) * 0.25;
+          player.y += (targetY - player.y) * 0.25;
         }
 
+        // Clamp inside Canvas bounds
         player.x = Math.max(10, Math.min(CANVAS_WIDTH - player.width - 10, player.x));
         player.y = Math.max(100, Math.min(CANVAS_HEIGHT - player.height - 10, player.y));
 
@@ -490,75 +426,96 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
             vx: Math.random() * 0.8 - 0.4,
             vy: 2.0 + Math.random() * 1.5,
             size: 2 + Math.random() * 2,
-            color: isOverdrive ? palette.gold : Math.random() > 0.5 ? palette.secondary : palette.primary,
+            color: Math.random() > 0.5 ? '#00f0ff' : '#00ff66',
             alpha: 0.9,
             maxLife: 12,
             life: 0,
           });
         }
 
-        // Weapon & Invulnerability Timers
+        // Weapon Timer & Cooldown Update
         if (player.weaponTimer > 0) {
           player.weaponTimer--;
           if (player.weaponTimer <= 0) {
             player.weaponType = 'single';
-            setActiveWeapon('SINGLE LASERS');
+            setActiveWeapon('SINGLE');
           }
         }
 
+        // Invulnerability Timer
         if (player.invulnerableTimer > 0) {
           player.invulnerableTimer--;
         }
 
-        // Combo Timer Decay
-        if (comboTimerRef.current > 0) {
-          comboTimerRef.current--;
-          if (comboTimerRef.current <= 0) {
-            comboCountRef.current = 0;
-          }
-        }
-
-        // Player Firing with 5 Weapon Systems
+        // Player Firing (Keyboard Space or Mouse / Touch Hold)
         if (fireCooldownRef.current > 0) fireCooldownRef.current--;
 
         const isFiring = keysRef.current['Space'] || pointerRef.current.firing;
-        const cooldownMax = isOverdrive ? 4 : 10;
-
         if (isFiring && fireCooldownRef.current <= 0) {
-          fireCooldownRef.current = cooldownMax;
+          fireCooldownRef.current = 10; // rate limit frames
+          soundEngine.playLaser();
 
           if (player.weaponType === 'triple') {
-            soundEngine.playLaser();
             bulletsRef.current.push(
-              { id: Math.random().toString(), x: player.x + player.width / 2, y: player.y, vx: 0, vy: -11, radius: 3, color: palette.secondary, isPlayer: true, damage: 1 },
-              { id: Math.random().toString(), x: player.x + 4, y: player.y + 6, vx: -2.2, vy: -10, radius: 3, color: palette.accent, isPlayer: true, damage: 1 },
-              { id: Math.random().toString(), x: player.x + player.width - 4, y: player.y + 6, vx: 2.2, vy: -10, radius: 3, color: palette.accent, isPlayer: true, damage: 1 }
-            );
-          } else if (player.weaponType === 'plasma_beam') {
-            soundEngine.playLaser();
-            bulletsRef.current.push({
-              id: Math.random().toString(),
-              x: player.x + player.width / 2,
-              y: player.y - 10,
-              vx: 0,
-              vy: -14,
-              radius: 7,
-              color: palette.accent,
-              isPlayer: true,
-              damage: 2,
-              isBeam: true,
-            });
-          } else if (player.weaponType === 'homing_missiles') {
-            soundEngine.playMissile();
-            bulletsRef.current.push(
-              { id: Math.random().toString(), x: player.x + 4, y: player.y + 10, vx: -1.5, vy: -6, radius: 4, color: palette.gold, isPlayer: true, damage: 2, isHoming: true },
-              { id: Math.random().toString(), x: player.x + player.width - 4, y: player.y + 10, vx: 1.5, vy: -6, radius: 4, color: palette.gold, isPlayer: true, damage: 2, isHoming: true }
+              {
+                id: Math.random().toString(),
+                x: player.x + player.width / 2,
+                y: player.y,
+                vx: 0,
+                vy: -11,
+                radius: 3,
+                color: '#00f0ff',
+                isPlayer: true,
+                damage: 1,
+              },
+              {
+                id: Math.random().toString(),
+                x: player.x + 4,
+                y: player.y + 6,
+                vx: -2.2,
+                vy: -10,
+                radius: 3,
+                color: '#ff007f',
+                isPlayer: true,
+                damage: 1,
+              },
+              {
+                id: Math.random().toString(),
+                x: player.x + player.width - 4,
+                y: player.y + 6,
+                vx: 2.2,
+                vy: -10,
+                radius: 3,
+                color: '#ff007f',
+                isPlayer: true,
+                damage: 1,
+              }
             );
           } else {
-            soundEngine.playLaser();
+            // Dual laser default
             bulletsRef.current.push(
-              { id: Math.random().toString(), x: player.x + 8, y: player.y, vx: 0, vy: -11, radius: 3.5, color: palette.primary, isPlayer: true, damage: 1 },
-              { id: Math.random().toString(), x: player.x + player.width - 8, y: player.y, vx: 0, vy: -11, radius: 3.5, color: palette.primary, isPlayer: true, damage: 1 }
+              {
+                id: Math.random().toString(),
+                x: player.x + 8,
+                y: player.y,
+                vx: 0,
+                vy: -11,
+                radius: 3.5,
+                color: '#00ff66',
+                isPlayer: true,
+                damage: 1,
+              },
+              {
+                id: Math.random().toString(),
+                x: player.x + player.width - 8,
+                y: player.y,
+                vx: 0,
+                vy: -11,
+                radius: 3.5,
+                color: '#00ff66',
+                isPlayer: true,
+                damage: 1,
+              }
             );
           }
         }
@@ -572,207 +529,105 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
           }
         }
 
-        // 4 Epic Boss Spawners (Wave 3, Wave 6, Wave 9, Wave 12)
-        let targetBossType: 'boss1' | 'boss2' | 'boss3' | 'boss4' | null = null;
-        if (waveRef.current === 3) targetBossType = 'boss1';
-        else if (waveRef.current === 6) targetBossType = 'boss2';
-        else if (waveRef.current === 9) targetBossType = 'boss3';
-        else if (waveRef.current === 12) targetBossType = 'boss4';
+        // Enemy Spawner Logic
+        spawnTimerRef.current++;
+        const spawnInterval = Math.max(30, 90 - waveRef.current * 8);
 
-        if (targetBossType && !enemiesRef.current.some((e) => e.type.startsWith('boss'))) {
-          const bossHealthMap = { boss1: 40, boss2: 60, boss3: 85, boss4: 120 };
-          const bossNameMap = { boss1: 'SCOUT DREADNOUGHT', boss2: 'ASTEROID CRUSHER', boss3: 'NEBULA PHANTOM', boss4: 'CYBERTRON OVERLORD' };
+        if (spawnTimerRef.current >= spawnInterval) {
+          spawnTimerRef.current = 0;
+          const rand = Math.random();
 
-          enemiesRef.current.push({
-            id: targetBossType + '_' + waveRef.current,
-            x: CANVAS_WIDTH / 2 - 60,
-            y: 60,
-            width: 120,
-            height: 65,
-            vx: 2.0,
-            vy: 0,
-            type: targetBossType,
-            health: bossHealthMap[targetBossType],
-            maxHealth: bossHealthMap[targetBossType],
-            scoreValue: 4000,
-            color: palette.accent,
-            rotation: 0,
-            rotSpeed: 0,
-            bossPhase: 1,
-            bossAttackTimer: 0,
-            bossShieldAngle: 0,
-            laserBeamActive: false,
-          });
-          soundEngine.setBGMTempo(170);
-          addFloatingText(CANVAS_WIDTH / 2 - 110, CANVAS_HEIGHT / 2 - 40, `⚠️ ${bossNameMap[targetBossType]} ⚠️`, palette.accent);
-        }
-
-        // Enemy Spawner Logic (Non-boss waves)
-        if (!targetBossType) {
-          spawnTimerRef.current++;
-          const spawnInterval = Math.max(25, 80 - waveRef.current * 6);
-
-          if (spawnTimerRef.current >= spawnInterval) {
-            spawnTimerRef.current = 0;
-            const rand = Math.random();
-
-            if (rand < 0.45) {
+          if (rand < 0.45) {
+            // Alien Invader
+            enemiesRef.current.push({
+              id: Math.random().toString(),
+              x: 30 + Math.random() * (CANVAS_WIDTH - 80),
+              y: -30,
+              width: 32,
+              height: 26,
+              vx: 1.5,
+              vy: 1.2 + waveRef.current * 0.15,
+              type: 'invader',
+              health: 1,
+              maxHealth: 1,
+              scoreValue: 100,
+              color: '#00f0ff',
+              rotation: 0,
+              rotSpeed: 0,
+              zigzagPhase: Math.random() * Math.PI * 2,
+              zigzagSpeed: 0.04,
+              shootTimer: Math.floor(Math.random() * 120),
+            });
+          } else if (rand < 0.85) {
+            // Asteroid Space Rock
+            const isLarge = Math.random() > 0.5;
+            const size = isLarge ? 44 : 26;
+            enemiesRef.current.push({
+              id: Math.random().toString(),
+              x: 20 + Math.random() * (CANVAS_WIDTH - 60),
+              y: -40,
+              width: size,
+              height: size,
+              vx: (Math.random() - 0.5) * 1.5,
+              vy: 1.5 + Math.random() * 2.0 + waveRef.current * 0.1,
+              type: isLarge ? 'asteroid_lg' : 'asteroid_md',
+              health: isLarge ? 3 : 1,
+              maxHealth: isLarge ? 3 : 1,
+              scoreValue: isLarge ? 150 : 75,
+              color: isLarge ? '#ffe600' : '#ff007f',
+              rotation: Math.random() * Math.PI,
+              rotSpeed: (Math.random() - 0.5) * 0.06,
+            });
+          } else {
+            // Bonus Saucer Ship
+            if (!enemiesRef.current.some((e) => e.type === 'saucer')) {
               enemiesRef.current.push({
                 id: Math.random().toString(),
-                x: 30 + Math.random() * (CANVAS_WIDTH - 80),
-                y: -30,
-                width: 32,
-                height: 26,
-                vx: 1.5,
-                vy: (1.2 + waveRef.current * 0.15) * enemySpeedScale,
-                type: 'invader',
-                health: 1,
-                maxHealth: 1,
-                scoreValue: 100,
-                color: palette.secondary,
+                x: -50,
+                y: 50 + Math.random() * 40,
+                width: 48,
+                height: 22,
+                vx: 3.5 + waveRef.current * 0.2,
+                vy: 0,
+                type: 'saucer',
+                health: 4,
+                maxHealth: 4,
+                scoreValue: 500,
+                color: '#ff007f',
                 rotation: 0,
                 rotSpeed: 0,
-                zigzagPhase: Math.random() * Math.PI * 2,
-                zigzagSpeed: 0.04,
-                shootTimer: Math.floor(Math.random() * 120),
               });
-            } else if (rand < 0.85) {
-              const isLarge = Math.random() > 0.5;
-              const size = isLarge ? 44 : 26;
-              enemiesRef.current.push({
-                id: Math.random().toString(),
-                x: 20 + Math.random() * (CANVAS_WIDTH - 60),
-                y: -40,
-                width: size,
-                height: size,
-                vx: (Math.random() - 0.5) * 1.5,
-                vy: (1.5 + Math.random() * 2.0 + waveRef.current * 0.1) * enemySpeedScale,
-                type: isLarge ? 'asteroid_lg' : 'asteroid_md',
-                health: isLarge ? 3 : 1,
-                maxHealth: isLarge ? 3 : 1,
-                scoreValue: isLarge ? 150 : 75,
-                color: isLarge ? palette.gold : palette.accent,
-                rotation: Math.random() * Math.PI,
-                rotSpeed: (Math.random() - 0.5) * 0.06,
-              });
-            } else {
-              if (!enemiesRef.current.some((e) => e.type === 'saucer')) {
-                enemiesRef.current.push({
-                  id: Math.random().toString(),
-                  x: -50,
-                  y: 50 + Math.random() * 40,
-                  width: 48,
-                  height: 22,
-                  vx: (3.5 + waveRef.current * 0.2) * enemySpeedScale,
-                  vy: 0,
-                  type: 'saucer',
-                  health: 4,
-                  maxHealth: 4,
-                  scoreValue: 500,
-                  color: palette.accent,
-                  rotation: 0,
-                  rotSpeed: 0,
-                });
-              }
             }
           }
         }
 
-        // Wave & Level Progression
+        // Wave progression check
         if (scoreRef.current > waveRef.current * 2500) {
           waveRef.current += 1;
           setWave(waveRef.current);
-          const lvlInfo = getLevelDetails(waveRef.current);
-
-          if (lvlInfo.name !== activeLevelName) {
-            setActiveLevelName(lvlInfo.name);
-            levelBannerTextRef.current = lvlInfo.name;
-            levelBannerTimerRef.current = 150;
-            addFloatingText(CANVAS_WIDTH / 2 - 110, CANVAS_HEIGHT / 2 - 40, lvlInfo.name, palette.gold);
-          } else {
-            addFloatingText(CANVAS_WIDTH / 2 - 80, CANVAS_HEIGHT / 2 - 40, `WAVE ${waveRef.current} REACHED!`, palette.accent);
-          }
-
-          soundEngine.setBGMTempo(135 + waveRef.current * 3);
+          addFloatingText(CANVAS_WIDTH / 2 - 80, CANVAS_HEIGHT / 2 - 40, `WAVE ${waveRef.current} REACHED!`, '#ff007f');
           soundEngine.playPowerUp();
         }
 
-        // Update Bullets & Homing Physics
+        // Update Bullets
         bulletsRef.current.forEach((b) => {
-          if (b.isHoming && b.isPlayer) {
-            let closestEnemy: Enemy | null = null;
-            let minDist = 9999;
-            enemiesRef.current.forEach((e) => {
-              const dist = Math.hypot(e.x + e.width / 2 - b.x, e.y + e.height / 2 - b.y);
-              if (dist < minDist) {
-                minDist = dist;
-                closestEnemy = e;
-              }
-            });
-
-            if (closestEnemy) {
-              const targetAngle = Math.atan2((closestEnemy as Enemy).y + (closestEnemy as Enemy).height / 2 - b.y, (closestEnemy as Enemy).x + (closestEnemy as Enemy).width / 2 - b.x);
-              b.vx += Math.cos(targetAngle) * 0.6;
-              b.vy += Math.sin(targetAngle) * 0.6;
-            }
-          }
-
           b.x += b.vx;
-          b.y += b.vy * (b.isPlayer ? 1 : enemySpeedScale);
+          b.y += b.vy;
         });
 
+        // Filter out out-of-bounds bullets
         bulletsRef.current = bulletsRef.current.filter(
           (b) => b.x >= -10 && b.x <= CANVAS_WIDTH + 10 && b.y >= -10 && b.y <= CANVAS_HEIGHT + 10
         );
 
-        // Near-Miss Dodging Bonus Check
-        bulletsRef.current.forEach((bullet) => {
-          if (bullet.isPlayer) return;
-          const dist = Math.hypot(
-            bullet.x - (player.x + player.width / 2),
-            bullet.y - (player.y + player.height / 2)
-          );
-          if (dist > player.width / 2 + bullet.radius && dist < player.width / 2 + bullet.radius + 14) {
-            if (Math.random() < 0.05) {
-              scoreRef.current += 50;
-              setScore(scoreRef.current);
-              addFloatingText(player.x, player.y - 15, 'CLOSE CALL! +50', palette.secondary);
-            }
-          }
-        });
-
-        // Update Enemies & 4 Bosses
+        // Update Enemies
         enemiesRef.current.forEach((enemy) => {
-          if (enemy.type.startsWith('boss')) {
-            enemy.x += enemy.vx * enemySpeedScale;
-            if (enemy.x < 30 || enemy.x > CANVAS_WIDTH - enemy.width - 30) {
-              enemy.vx = -enemy.vx;
-            }
-
-            enemy.bossShieldAngle = (enemy.bossShieldAngle || 0) + 0.04;
-            enemy.bossAttackTimer = (enemy.bossAttackTimer || 0) + 1;
-
-            if (enemy.health < enemy.maxHealth * 0.5 && enemy.bossPhase === 1) {
-              enemy.bossPhase = 2;
-              addFloatingText(enemy.x, enemy.y, 'BOSS ENRAGED!', palette.gold);
-            }
-
-            // Boss Attack Behaviors
-            if (enemy.bossAttackTimer % 75 === 0) {
-              bulletsRef.current.push(
-                { id: Math.random().toString(), x: enemy.x + 20, y: enemy.y + enemy.height, vx: -1.2, vy: 4.5, radius: 4, color: palette.accent, isPlayer: false, damage: 1 },
-                { id: Math.random().toString(), x: enemy.x + enemy.width - 20, y: enemy.y + enemy.height, vx: 1.2, vy: 4.5, radius: 4, color: palette.accent, isPlayer: false, damage: 1 }
-              );
-            }
-
-            if (enemy.type === 'boss4' && enemy.bossPhase === 2) {
-              enemy.laserBeamActive = enemy.bossAttackTimer % 180 > 120;
-            }
-          } else if (enemy.type === 'invader') {
+          if (enemy.type === 'invader') {
             enemy.zigzagPhase = (enemy.zigzagPhase || 0) + (enemy.zigzagSpeed || 0.04);
             enemy.x += Math.sin(enemy.zigzagPhase) * 2.2;
             enemy.y += enemy.vy;
 
+            // Invader firing enemy plasma drops
             enemy.shootTimer = (enemy.shootTimer || 0) + 1;
             if (enemy.shootTimer > 150) {
               enemy.shootTimer = 0;
@@ -784,7 +639,7 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
                   vx: 0,
                   vy: 4.5,
                   radius: 3.5,
-                  color: palette.accent,
+                  color: '#ff007f',
                   isPlayer: false,
                   damage: 1,
                 });
@@ -793,12 +648,14 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
           } else if (enemy.type === 'saucer') {
             enemy.x += enemy.vx;
           } else {
+            // Asteroid
             enemy.x += enemy.vx;
             enemy.y += enemy.vy;
             enemy.rotation += enemy.rotSpeed;
           }
         });
 
+        // Filter out enemies out of screen
         enemiesRef.current = enemiesRef.current.filter(
           (enemy) => enemy.y < CANVAS_HEIGHT + 60 && enemy.x < CANVAS_WIDTH + 80
         );
@@ -810,7 +667,11 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
         });
         powerUpsRef.current = powerUpsRef.current.filter((pu) => pu.y < CANVAS_HEIGHT + 40);
 
-        // Collision Detection vs Player Bullets
+        // -------------------------------------------------------------
+        // COLLISION DETECTION & RESOLUTION
+        // -------------------------------------------------------------
+
+        // 1. Player Lasers vs Enemies
         bulletsRef.current.forEach((bullet) => {
           if (!bullet.isPlayer) return;
 
@@ -824,25 +685,21 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
               bullet.y <= enemy.y + enemy.height;
 
             if (isColliding) {
-              bullet.damage = 0;
+              bullet.damage = 0; // Destroy bullet
               enemy.health -= 1;
               soundEngine.playHit();
 
+              // Spark hit effect
               createExplosion(bullet.x, bullet.y, enemy.color, 5);
 
               if (enemy.health <= 0) {
-                soundEngine.playExplosion(enemy.type === 'saucer' || enemy.type === 'asteroid_lg' || enemy.type.startsWith('boss'));
-                createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color, enemy.type.startsWith('boss') ? 40 : 16);
-                addScreenShake(enemy.type.startsWith('boss') ? 24 : 6);
+                // Enemy Destroyed!
+                soundEngine.playExplosion(enemy.type === 'saucer' || enemy.type === 'asteroid_lg');
+                createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color, 16);
+                addScreenShake(enemy.type === 'saucer' ? 10 : 4);
 
-                comboCountRef.current += 1;
-                comboTimerRef.current = 90;
-                if (comboCountRef.current >= 3) {
-                  const comboText = comboCountRef.current === 3 ? 'SUPER COMBO x3!' : comboCountRef.current === 5 ? 'UNSTOPPABLE x5!' : `COMBO x${comboCountRef.current}!`;
-                  addFloatingText(enemy.x, enemy.y - 20, comboText, palette.gold);
-                }
-
-                multiplierTimerRef.current = 180;
+                // Multiplier calculation
+                multiplierTimerRef.current = 180; // 3 seconds streak
                 if (multiplierRef.current < 4) {
                   multiplierRef.current += 1;
                   setMultiplier(multiplierRef.current);
@@ -852,27 +709,52 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
                 scoreRef.current += gainedScore;
                 setScore(scoreRef.current);
 
+                // Check High Score
                 if (scoreRef.current > highScoreRef.current) {
                   highScoreRef.current = scoreRef.current;
                   setHighScore(scoreRef.current);
                   localStorage.setItem(HIGH_SCORE_KEY, scoreRef.current.toString());
                 }
 
-                addFloatingText(enemy.x + enemy.width / 2 - 15, enemy.y, `+${gainedScore}`, palette.primary);
+                // Score Popup
+                addFloatingText(
+                  enemy.x + enemy.width / 2 - 15,
+                  enemy.y,
+                  `+${gainedScore}`,
+                  multiplierRef.current > 1 ? '#ffe600' : '#00ff66'
+                );
 
-                // 8 Power-Up Drop Types
-                if (Math.random() < 0.26 || enemy.type === 'saucer' || enemy.type.startsWith('boss')) {
-                  const types: PowerUpType[] = ['triple', 'beam', 'missiles', 'shield', 'bomb', 'life', 'time_freeze', 'overdrive'];
+                // Split large asteroids into smaller ones
+                if (enemy.type === 'asteroid_lg') {
+                  for (let s = 0; s < 2; s++) {
+                    enemiesRef.current.push({
+                      id: Math.random().toString(),
+                      x: enemy.x + (s === 0 ? -10 : 15),
+                      y: enemy.y,
+                      width: 22,
+                      height: 22,
+                      vx: (s === 0 ? -1.8 : 1.8) + (Math.random() - 0.5),
+                      vy: 2.0 + Math.random(),
+                      type: 'asteroid_sm',
+                      health: 1,
+                      maxHealth: 1,
+                      scoreValue: 50,
+                      color: '#00ff66',
+                      rotation: Math.random() * Math.PI,
+                      rotSpeed: (Math.random() - 0.5) * 0.1,
+                    });
+                  }
+                }
+
+                // Drop Power-Up chance (20%)
+                if (Math.random() < 0.22 || enemy.type === 'saucer') {
+                  const types: PowerUpType[] = ['triple', 'shield', 'bomb', 'life'];
                   const selectedType = types[Math.floor(Math.random() * types.length)];
                   const colorMap: Record<PowerUpType, string> = {
-                    triple: palette.secondary,
-                    beam: palette.accent,
-                    missiles: palette.gold,
-                    shield: palette.secondary,
-                    bomb: palette.gold,
-                    life: palette.primary,
-                    time_freeze: '#00f0ff',
-                    overdrive: '#ff007f',
+                    triple: '#00f0ff',
+                    shield: '#ff007f',
+                    bomb: '#ffe600',
+                    life: '#00ff66',
                   };
 
                   powerUpsRef.current.push({
@@ -891,74 +773,67 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
           });
         });
 
+        // Clean destroyed bullets & enemies
         bulletsRef.current = bulletsRef.current.filter((b) => b.damage > 0);
         enemiesRef.current = enemiesRef.current.filter((e) => e.health > 0);
 
-        // Power-Up Collection by Player
+        // 2. Power-Up Collection by Player
         powerUpsRef.current.forEach((pu) => {
-          const dist = Math.hypot(pu.x - (player.x + player.width / 2), pu.y - (player.y + player.height / 2));
+          const dist = Math.hypot(
+            pu.x - (player.x + player.width / 2),
+            pu.y - (player.y + player.height / 2)
+          );
 
           if (dist < player.width / 2 + pu.size / 2) {
             soundEngine.playPowerUp();
-            pu.y = CANVAS_HEIGHT + 100;
+            pu.y = CANVAS_HEIGHT + 100; // remove
 
             if (pu.type === 'triple') {
               player.weaponType = 'triple';
-              player.weaponTimer = 500;
-              setActiveWeapon('TRI-BEAM SPREAD');
-              addFloatingText(player.x, player.y - 20, 'TRI-BEAM SPREAD!', palette.secondary);
-            } else if (pu.type === 'beam') {
-              player.weaponType = 'plasma_beam';
-              player.weaponTimer = 450;
-              setActiveWeapon('HEAVY PLASMA BEAM');
-              addFloatingText(player.x, player.y - 20, 'PLASMA BEAM COLUMN!', palette.accent);
-            } else if (pu.type === 'missiles') {
-              player.weaponType = 'homing_missiles';
-              player.weaponTimer = 450;
-              setActiveWeapon('SEEKING MISSILES');
-              addFloatingText(player.x, player.y - 20, 'HOMING MISSILES!', palette.gold);
-            } else if (pu.type === 'time_freeze') {
-              player.timeFreezeTimer = 360;
-              soundEngine.playFreeze();
-              addFloatingText(player.x, player.y - 20, '⏱️ TIME FREEZE!', '#00f0ff');
-            } else if (pu.type === 'overdrive') {
-              player.overdriveTimer = 360;
-              soundEngine.playPowerUp();
-              addFloatingText(player.x, player.y - 20, '⚡ OVERDRIVE!', '#ff007f');
+              player.weaponTimer = 500; // 8 seconds of triple shot
+              setActiveWeapon('TRIPLE LASER');
+              addFloatingText(player.x, player.y - 20, 'TRIPLE LASERS!', '#00f0ff');
             } else if (pu.type === 'shield') {
               player.hasShield = true;
               player.shieldHits = 2;
               setShieldActive(true);
-              addFloatingText(player.x, player.y - 20, 'SHIELD ACTIVATED!', palette.accent);
+              addFloatingText(player.x, player.y - 20, 'SHIELD ACTIVATED!', '#ff007f');
             } else if (pu.type === 'bomb') {
               if (player.bombs < player.maxBombs) {
                 player.bombs += 1;
                 setBombs(player.bombs);
-                addFloatingText(player.x, player.y - 20, '+1 EMP BOMB!', palette.gold);
+                addFloatingText(player.x, player.y - 20, '+1 EMP BOMB!', '#ffe600');
+              } else {
+                addFloatingText(player.x, player.y - 20, 'MAX BOMBS!', '#ffe600');
               }
             } else if (pu.type === 'life') {
               if (livesRef.current < player.maxLives) {
                 livesRef.current += 1;
                 setLives(livesRef.current);
-                addFloatingText(player.x, player.y - 20, '+1 EXTRA SHIP!', palette.primary);
+                addFloatingText(player.x, player.y - 20, '+1 EXTRA SHIP!', '#00ff66');
               }
             }
           }
         });
 
-        // Player Hit Check
+        // 3. Player Collision vs Enemy Bullets & Enemies
         if (player.invulnerableTimer <= 0) {
           let tookHit = false;
 
+          // Check vs enemy bullets
           bulletsRef.current.forEach((bullet) => {
             if (bullet.isPlayer) return;
-            const dist = Math.hypot(bullet.x - (player.x + player.width / 2), bullet.y - (player.y + player.height / 2));
+            const dist = Math.hypot(
+              bullet.x - (player.x + player.width / 2),
+              bullet.y - (player.y + player.height / 2)
+            );
             if (dist < bullet.radius + player.width / 2 - 4) {
               bullet.damage = 0;
               tookHit = true;
             }
           });
 
+          // Check vs enemy ships/rocks
           enemiesRef.current.forEach((enemy) => {
             const isColliding =
               player.x < enemy.x + enemy.width &&
@@ -967,7 +842,7 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
               player.y + player.height > enemy.y;
 
             if (isColliding) {
-              if (!enemy.type.startsWith('boss')) enemy.health = 0;
+              enemy.health = 0;
               createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color, 14);
               tookHit = true;
             }
@@ -977,32 +852,36 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
             if (player.hasShield) {
               player.shieldHits -= 1;
               soundEngine.playHit();
-              createExplosion(player.x + player.width / 2, player.y + player.height / 2, palette.secondary, 12);
+              createExplosion(player.x + player.width / 2, player.y + player.height / 2, '#00f0ff', 12);
               if (player.shieldHits <= 0) {
                 player.hasShield = false;
                 setShieldActive(false);
-                addFloatingText(player.x, player.y - 20, 'SHIELD BROKEN!', palette.accent);
+                addFloatingText(player.x, player.y - 20, 'SHIELD BROKEN!', '#ff007f');
               } else {
-                addFloatingText(player.x, player.y - 20, 'SHIELD ABSORBED!', palette.secondary);
+                addFloatingText(player.x, player.y - 20, 'SHIELD ABSORBED!', '#00f0ff');
               }
-              player.invulnerableTimer = 30;
+              player.invulnerableTimer = 30; // brief invulnerability
             } else {
+              // Damage Player
               soundEngine.playExplosion(true);
               addScreenShake(16);
-              createExplosion(player.x + player.width / 2, player.y + player.height / 2, palette.accent, 24);
+              createExplosion(player.x + player.width / 2, player.y + player.height / 2, '#ff007f', 24);
 
               livesRef.current -= 1;
               setLives(livesRef.current);
-              player.invulnerableTimer = 90;
+              player.invulnerableTimer = 90; // ~1.5 seconds invulnerability after hit
 
+              // Reset Multiplier
               multiplierRef.current = 1;
               setMultiplier(1);
 
               if (livesRef.current <= 0) {
+                // Game Over!
                 soundEngine.playGameOver();
                 setGameState('GAMEOVER');
                 stateRef.current = 'GAMEOVER';
               } else {
+                // Respawn Player in center
                 player.x = CANVAS_WIDTH / 2 - player.width / 2;
                 player.y = CANVAS_HEIGHT - 70;
               }
@@ -1011,7 +890,7 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
         }
       }
 
-      // Update Particles & Floating Text
+      // Update Particles
       particlesRef.current.forEach((p) => {
         p.x += p.vx;
         p.y += p.vy;
@@ -1020,6 +899,7 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
       });
       particlesRef.current = particlesRef.current.filter((p) => p.life < p.maxLife);
 
+      // Update Floating Texts
       floatingTextsRef.current.forEach((ft) => {
         ft.y += ft.vy;
         ft.life -= 1;
@@ -1027,6 +907,7 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
       });
       floatingTextsRef.current = floatingTextsRef.current.filter((ft) => ft.life > 0);
 
+      // Update Stars
       starsRef.current.forEach((star) => {
         star.y += star.speed;
         if (star.y > CANVAS_HEIGHT) {
@@ -1035,6 +916,7 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
         }
       });
 
+      // Decay Screen Shake
       if (screenShakeRef.current > 0) {
         screenShakeRef.current *= 0.88;
         if (screenShakeRef.current < 0.2) screenShakeRef.current = 0;
@@ -1045,16 +927,18 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
       // -------------------------------------------------------------
       ctx.save();
 
+      // Apply Screen Shake transform offset
       if (screenShakeRef.current > 0) {
         const shakeX = (Math.random() - 0.5) * screenShakeRef.current * 1.5;
         const shakeY = (Math.random() - 0.5) * screenShakeRef.current * 1.5;
         ctx.translate(shakeX, shakeY);
       }
 
-      ctx.fillStyle = palette.bg;
+      // Clear Screen with deep retro CRT dark backdrop
+      ctx.fillStyle = '#030806';
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      // Starfield
+      // Render Parallax Retro Starfield
       starsRef.current.forEach((star) => {
         ctx.fillStyle = star.color;
         ctx.globalAlpha = star.alpha;
@@ -1062,7 +946,7 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
       });
       ctx.globalAlpha = 1.0;
 
-      // Particles
+      // Render Particles
       particlesRef.current.forEach((p) => {
         ctx.save();
         ctx.globalAlpha = Math.max(0, p.alpha);
@@ -1079,7 +963,7 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
         ctx.restore();
       });
 
-      // Power-Ups (8 Types)
+      // Render Power-Ups
       powerUpsRef.current.forEach((pu) => {
         ctx.save();
         ctx.translate(pu.x, pu.y);
@@ -1096,25 +980,16 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
         ctx.stroke();
 
         ctx.fillStyle = pu.color;
-        ctx.font = '9px "Press Start 2P", monospace';
+        ctx.font = '10px "Press Start 2P", monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const labelMap: Record<PowerUpType, string> = {
-          triple: '3X',
-          beam: 'BM',
-          missiles: 'MS',
-          shield: 'SH',
-          bomb: 'B',
-          life: '+1',
-          time_freeze: 'TZ',
-          overdrive: 'OD',
-        };
-        ctx.fillText(labelMap[pu.type] || 'PU', 0, 1);
+        const label = pu.type === 'triple' ? '3X' : pu.type === 'shield' ? 'SH' : pu.type === 'bomb' ? 'B' : '+1';
+        ctx.fillText(label, 0, 1);
 
         ctx.restore();
       });
 
-      // Bullets
+      // Render Bullets
       bulletsRef.current.forEach((b) => {
         ctx.save();
         ctx.shadowColor = b.color;
@@ -1125,10 +1000,19 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
         ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
         ctx.fill();
 
+        // Laser tail energy trail
+        ctx.strokeStyle = b.color;
+        ctx.lineWidth = b.radius * 1.2;
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        ctx.lineTo(b.x - b.vx * 1.5, b.y - b.vy * 1.5);
+        ctx.stroke();
+
         ctx.restore();
       });
 
-      // Enemies & Bosses
+      // Render Enemies
       enemiesRef.current.forEach((enemy) => {
         ctx.save();
         ctx.translate(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
@@ -1139,40 +1023,76 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
         ctx.fillStyle = enemy.color;
         ctx.lineWidth = 2;
 
-        if (enemy.type.startsWith('boss')) {
+        if (enemy.type === 'invader') {
+          // Classic Vector Alien Invader Drawing
+          const animLeg = Math.floor(tick / 15) % 2 === 0;
+
           ctx.beginPath();
-          ctx.moveTo(0, -25);
-          ctx.lineTo(50, 10);
-          ctx.lineTo(30, 25);
-          ctx.lineTo(-30, 25);
-          ctx.lineTo(-50, 10);
-          ctx.closePath();
-          ctx.fill();
+          // Antennae
+          ctx.moveTo(-10, -12); ctx.lineTo(-6, -6);
+          ctx.moveTo(10, -12); ctx.lineTo(6, -6);
+          // Body Box
+          ctx.rect(-12, -6, 24, 12);
           ctx.stroke();
 
-          ctx.save();
-          ctx.rotate(enemy.bossShieldAngle || 0);
-          ctx.strokeStyle = palette.secondary;
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(0, 0, 48, 0, Math.PI * 1.5);
-          ctx.stroke();
-          ctx.restore();
-        } else if (enemy.type === 'invader') {
-          ctx.fillRect(-12, -6, 24, 12);
+          // Eyes
+          ctx.fillRect(-8, -3, 4, 4);
+          ctx.fillRect(4, -3, 4, 4);
+
+          // Animated Legs
+          if (animLeg) {
+            ctx.beginPath();
+            ctx.moveTo(-12, 6); ctx.lineTo(-15, 12);
+            ctx.moveTo(-4, 6); ctx.lineTo(-6, 12);
+            ctx.moveTo(4, 6); ctx.lineTo(6, 12);
+            ctx.moveTo(12, 6); ctx.lineTo(15, 12);
+            ctx.stroke();
+          } else {
+            ctx.beginPath();
+            ctx.moveTo(-12, 6); ctx.lineTo(-9, 12);
+            ctx.moveTo(-4, 6); ctx.lineTo(-2, 12);
+            ctx.moveTo(4, 6); ctx.lineTo(2, 12);
+            ctx.moveTo(12, 6); ctx.lineTo(9, 12);
+            ctx.stroke();
+          }
         } else if (enemy.type === 'saucer') {
+          // UFO Saucer
           ctx.beginPath();
           ctx.ellipse(0, 0, 22, 8, 0, 0, Math.PI * 2);
           ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(0, -3, 10, Math.PI, 0);
+          ctx.stroke();
+
+          // Pulsing dome lights
+          const lightColor = Math.floor(tick / 10) % 2 === 0 ? '#ffe600' : '#00f0ff';
+          ctx.fillStyle = lightColor;
+          ctx.fillRect(-12, 0, 4, 3);
+          ctx.fillRect(-3, 1, 4, 3);
+          ctx.fillRect(6, 0, 4, 3);
         } else {
+          // Polygon Asteroid Space Rock
           ctx.rotate(enemy.rotation);
-          ctx.strokeRect(-enemy.width / 2, -enemy.height / 2, enemy.width, enemy.height);
+          const r = enemy.width / 2;
+          ctx.beginPath();
+          const points = 7;
+          for (let i = 0; i < points; i++) {
+            const angle = (i / points) * Math.PI * 2;
+            const variance = i % 2 === 0 ? 1 : 0.75;
+            const px = Math.cos(angle) * r * variance;
+            const py = Math.sin(angle) * r * variance;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.stroke();
         }
 
         ctx.restore();
       });
 
-      // Player Ship
+      // Render Player Ship (if playing & invulnerability flash check)
       const player = playerRef.current;
       const isInvulnerable = player.invulnerableTimer > 0;
       const shouldDrawPlayer = !isInvulnerable || Math.floor(tick / 4) % 2 === 0;
@@ -1181,26 +1101,58 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
         ctx.save();
         ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
 
-        ctx.shadowColor = palette.primary;
+        // Tilt effect based on arrow keys
+        let tiltAngle = 0;
+        if (keysRef.current['ArrowLeft'] || keysRef.current['KeyA']) tiltAngle = -0.15;
+        if (keysRef.current['ArrowRight'] || keysRef.current['KeyD']) tiltAngle = 0.15;
+        ctx.rotate(tiltAngle);
+
+        // Ship Outer Glow & Body
+        ctx.shadowColor = '#00ff66';
         ctx.shadowBlur = 10;
-        ctx.strokeStyle = palette.primary;
+        ctx.strokeStyle = '#00ff66';
         ctx.fillStyle = '#032414';
         ctx.lineWidth = 2;
 
+        // Draw Retro Starfighter Wing Vector Polygon
         ctx.beginPath();
-        ctx.moveTo(0, -18);
-        ctx.lineTo(14, 14);
-        ctx.lineTo(6, 10);
-        ctx.lineTo(-6, 10);
-        ctx.lineTo(-14, 14);
+        ctx.moveTo(0, -18); // nose tip
+        ctx.lineTo(14, 14); // right wing tip
+        ctx.lineTo(6, 10);  // right inner engine
+        ctx.lineTo(-6, 10); // left inner engine
+        ctx.lineTo(-14, 14); // left wing tip
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
+        // Cockpit Glass Hatch
+        ctx.fillStyle = '#00f0ff';
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.moveTo(0, -10);
+        ctx.lineTo(4, 0);
+        ctx.lineTo(-4, 0);
+        ctx.closePath();
+        ctx.fill();
+
+        // Active Shield Render
+        if (player.hasShield) {
+          ctx.save();
+          ctx.strokeStyle = '#00f0ff';
+          ctx.shadowColor = '#00f0ff';
+          ctx.shadowBlur = 14;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(0, 0, 26 + Math.sin(tick * 0.1) * 2, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
         ctx.restore();
       }
 
-      // Render Floating Text
+      // Render Floating Text Popups
       floatingTextsRef.current.forEach((ft) => {
         ctx.save();
         ctx.globalAlpha = Math.max(0, ft.alpha);
@@ -1213,55 +1165,57 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
         ctx.restore();
       });
 
-      // Level Banner Overlay
-      if (levelBannerTimerRef.current > 0 && stateRef.current === 'PLAYING') {
-        ctx.save();
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-        ctx.fillRect(0, CANVAS_HEIGHT / 2 - 35, CANVAS_WIDTH, 70);
-        ctx.font = '14px "Press Start 2P", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = palette.gold;
-        ctx.shadowColor = palette.gold;
-        ctx.shadowBlur = 12;
-        ctx.fillText(levelBannerTextRef.current, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 5);
-        ctx.restore();
-      }
-
       // -------------------------------------------------------------
-      // 3. CANVAS HUD OVERLAY
+      // 3. CANVAS HUD OVERLAY (Always visible on canvas top)
       // -------------------------------------------------------------
       ctx.save();
       ctx.font = '11px "Press Start 2P", monospace';
 
+      // Top Header HUD Bar Background
       ctx.fillStyle = 'rgba(0, 20, 10, 0.65)';
       ctx.fillRect(0, 0, CANVAS_WIDTH, 38);
-      ctx.strokeStyle = palette.primary;
+      ctx.strokeStyle = '#00ff66';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(0, 38);
       ctx.lineTo(CANVAS_WIDTH, 38);
       ctx.stroke();
 
-      ctx.fillStyle = palette.primary;
-      ctx.shadowColor = palette.primary;
+      // Score Display
+      ctx.fillStyle = '#00ff66';
+      ctx.shadowColor = '#00ff66';
       ctx.shadowBlur = 4;
       ctx.textAlign = 'left';
       ctx.fillText(`SCORE: ${scoreRef.current.toString().padStart(6, '0')}`, 16, 24);
 
-      ctx.fillStyle = palette.secondary;
-      ctx.shadowColor = palette.secondary;
+      // Multiplier Badge
+      if (multiplierRef.current > 1) {
+        ctx.fillStyle = '#ffe600';
+        ctx.shadowColor = '#ffe600';
+        ctx.fillText(`x${multiplierRef.current}`, 175, 24);
+      }
+
+      // High Score
+      ctx.fillStyle = '#00f0ff';
+      ctx.shadowColor = '#00f0ff';
       ctx.textAlign = 'center';
       ctx.fillText(`HIGH: ${highScoreRef.current.toString().padStart(6, '0')}`, CANVAS_WIDTH / 2 - 20, 24);
 
-      ctx.fillStyle = playerRef.current.bombs > 0 ? palette.gold : palette.accent;
+      // Bomb Inventory Count Display
+      ctx.fillStyle = playerRef.current.bombs > 0 ? '#ffe600' : '#ff007f';
       ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = 4;
       ctx.textAlign = 'right';
       ctx.fillText(`BOMBS: ${playerRef.current.bombs}`, CANVAS_WIDTH - 150, 24);
 
+      // Lives Display (Mini Ship Icons)
       for (let l = 0; l < livesRef.current; l++) {
         const lx = CANVAS_WIDTH - 110 + l * 20;
         const ly = 22;
-        ctx.fillStyle = palette.primary;
+        ctx.fillStyle = '#00ff66';
+        ctx.shadowColor = '#00ff66';
+        ctx.shadowBlur = 4;
+
         ctx.beginPath();
         ctx.moveTo(lx, ly - 8);
         ctx.lineTo(lx + 6, ly + 6);
@@ -1273,41 +1227,79 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
       ctx.restore();
 
       // -------------------------------------------------------------
-      // 4. GAME OVERLAYS (START, PAUSED, GAMEOVER)
+      // 4. GAME STATE SCREENS OVERLAY (START, PAUSED, GAMEOVER)
       // -------------------------------------------------------------
       if (stateRef.current === 'START') {
         ctx.save();
         ctx.fillStyle = 'rgba(3, 8, 6, 0.88)';
         ctx.fillRect(0, 40, CANVAS_WIDTH, CANVAS_HEIGHT - 40);
 
+        // Title Header Banner
         ctx.font = '22px "Press Start 2P", monospace';
         ctx.textAlign = 'center';
-        ctx.fillStyle = palette.primary;
-        ctx.shadowColor = palette.primary;
+        ctx.fillStyle = '#00ff66';
+        ctx.shadowColor = '#00ff66';
         ctx.shadowBlur = 12;
         ctx.fillText('SPACE DEFENDER 1984', CANVAS_WIDTH / 2, 110);
 
         ctx.font = '10px "Press Start 2P", monospace';
-        ctx.fillStyle = palette.secondary;
-        ctx.fillText('5 LEVELS • 4 BOSSES • 8 POWER-UPS', CANVAS_WIDTH / 2, 140);
+        ctx.fillStyle = '#00f0ff';
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 6;
+        ctx.fillText('RETRO 2D ARCADE SHOOTER', CANVAS_WIDTH / 2, 140);
 
+        // Flashing Press Space
         if (Math.floor(tick / 30) % 2 === 0) {
           ctx.font = '12px "Press Start 2P", monospace';
-          ctx.fillStyle = palette.gold;
+          ctx.fillStyle = '#ffe600';
+          ctx.shadowColor = '#ffe600';
+          ctx.shadowBlur = 8;
           ctx.fillText('PRESS SPACE OR TAP TO START', CANVAS_WIDTH / 2, 210);
         }
 
+        // Leaderboard Hall of Fame Table
         ctx.font = '11px "Press Start 2P", monospace';
-        ctx.fillStyle = palette.gold;
+        ctx.fillStyle = '#ffe600';
+        ctx.shadowColor = '#ffe600';
+        ctx.shadowBlur = 6;
         ctx.fillText('★ TOP 5 PILOTS HALL OF FAME ★', CANVAS_WIDTH / 2, 280);
 
         leaderboardRef.current.slice(0, 5).forEach((entry, idx) => {
           const yPos = 315 + idx * 26;
+          const rankLabel = `${idx + 1}. ${entry.name.padEnd(4, ' ')}`;
+          const scoreLabel = entry.score.toString().padStart(6, '0');
           ctx.font = '10px "Press Start 2P", monospace';
-          ctx.fillStyle = idx === 0 ? palette.gold : idx === 1 ? palette.secondary : palette.primary;
-          ctx.fillText(`${idx + 1}. ${entry.name.padEnd(4, ' ')} - ${entry.score.toString().padStart(6, '0')}`, CANVAS_WIDTH / 2, yPos);
+          ctx.fillStyle = idx === 0 ? '#ffe600' : idx === 1 ? '#00f0ff' : '#00ff66';
+          ctx.shadowBlur = 4;
+          ctx.fillText(`${rankLabel} - ${scoreLabel}`, CANVAS_WIDTH / 2, yPos);
         });
 
+        // Control Cards
+        ctx.font = '9px "Press Start 2P", monospace';
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = 0;
+
+        ctx.fillText('MOVE: WASD / ARROWS / MOUSE / TOUCH DRAG', CANVAS_WIDTH / 2, 480);
+        ctx.fillText('FIRE: SPACE / CLICK    BOMB: [B] KEY or BOMB BUTTON', CANVAS_WIDTH / 2, 510);
+        ctx.fillText('PAUSE: P / ESC    MUTE: M', CANVAS_WIDTH / 2, 540);
+
+        ctx.restore();
+      } else if (stateRef.current === 'PAUSED') {
+        ctx.save();
+        ctx.fillStyle = 'rgba(3, 8, 6, 0.70)';
+        ctx.fillRect(0, 40, CANVAS_WIDTH, CANVAS_HEIGHT - 40);
+
+        ctx.font = '22px "Press Start 2P", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffe600';
+        ctx.shadowColor = '#ffe600';
+        ctx.shadowBlur = 12;
+        ctx.fillText('PAUSED', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
+
+        ctx.font = '12px "Press Start 2P", monospace';
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = 0;
+        ctx.fillText('PRESS P OR ESC TO RESUME', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
         ctx.restore();
       } else if (stateRef.current === 'GAMEOVER') {
         ctx.save();
@@ -1316,26 +1308,51 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
 
         ctx.font = '26px "Press Start 2P", monospace';
         ctx.textAlign = 'center';
-        ctx.fillStyle = palette.accent;
-        ctx.shadowColor = palette.accent;
+        ctx.fillStyle = '#ff007f';
+        ctx.shadowColor = '#ff007f';
         ctx.shadowBlur = 16;
         ctx.fillText('GAME OVER', CANVAS_WIDTH / 2, 140);
 
         ctx.font = '14px "Press Start 2P", monospace';
-        ctx.fillStyle = palette.primary;
+        ctx.fillStyle = '#00ff66';
+        ctx.shadowColor = '#00ff66';
+        ctx.shadowBlur = 8;
         ctx.fillText(`FINAL SCORE: ${scoreRef.current}`, CANVAS_WIDTH / 2, 190);
+
+        ctx.fillStyle = '#00f0ff';
+        ctx.shadowColor = '#00f0ff';
+        ctx.fillText(`HIGH SCORE: ${highScoreRef.current}`, CANVAS_WIDTH / 2, 225);
+
+        // Leaderboard Table on Game Over
+        ctx.font = '11px "Press Start 2P", monospace';
+        ctx.fillStyle = '#ffe600';
+        ctx.shadowColor = '#ffe600';
+        ctx.shadowBlur = 6;
+        ctx.fillText('LEADERBOARD RANKINGS', CANVAS_WIDTH / 2, 280);
+
+        leaderboardRef.current.slice(0, 5).forEach((entry, idx) => {
+          const yPos = 315 + idx * 24;
+          const rankLabel = `${idx + 1}. ${entry.name.padEnd(4, ' ')}`;
+          const scoreLabel = entry.score.toString().padStart(6, '0');
+          ctx.font = '10px "Press Start 2P", monospace';
+          ctx.fillStyle = idx === 0 ? '#ffe600' : idx === 1 ? '#00f0ff' : '#00ff66';
+          ctx.shadowBlur = 4;
+          ctx.fillText(`${rankLabel} - ${scoreLabel}`, CANVAS_WIDTH / 2, yPos);
+        });
 
         if (Math.floor(tick / 30) % 2 === 0) {
           ctx.font = '11px "Press Start 2P", monospace';
           ctx.fillStyle = '#ffffff';
+          ctx.shadowBlur = 0;
           ctx.fillText('PRESS SPACE TO RESTART', CANVAS_WIDTH / 2, 480);
         }
 
         ctx.restore();
       }
 
-      ctx.restore();
+      ctx.restore(); // Restore shake transform
 
+      // Request next frame
       animFrameIdRef.current = requestAnimationFrame(gameLoop);
     };
 
@@ -1346,12 +1363,13 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
         cancelAnimationFrame(animFrameIdRef.current);
       }
     };
-  }, [resetGame, theme]);
+  }, [resetGame]);
 
   return (
     <div className="flex flex-col items-center w-full">
       {/* Canvas Display Container */}
       <div className="relative w-full max-w-[800px] aspect-[4/3] mx-auto bg-[#030806] rounded-lg overflow-hidden shadow-2xl select-none touch-none">
+        {/* Canvas Element with Mouse & Touch Event Handlers */}
         <canvas
           ref={canvasRef}
           width={CANVAS_WIDTH}
@@ -1392,13 +1410,13 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
           }}
         />
 
-        {/* CRT Overlay Effects */}
+        {/* CRT Physical Screen Effect Layers */}
         <div className="absolute inset-0 crt-scanlines pointer-events-none z-10" />
         <div className="absolute inset-0 crt-vignette pointer-events-none z-20" />
         <div className="absolute inset-0 crt-glare pointer-events-none z-30" />
       </div>
 
-      {/* Leaderboard Submission Box */}
+      {/* Leaderboard Submission Box (Visible on Game Over) */}
       {gameState === 'GAMEOVER' && score > 0 && (
         <div className="mt-3 w-full max-w-[800px] bg-stone-900/90 border border-[#ffe600]/40 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-xl animate-in fade-in">
           <div className="flex items-center space-x-2 text-[#ffe600]">
@@ -1413,7 +1431,7 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
                 maxLength={3}
                 value={pilotInitials}
                 onChange={(e) => setPilotInitials(e.target.value.toUpperCase())}
-                className="w-16 bg-black border border-[#00ff66] text-[#00ff66] text-center font-retro py-1 px-2 uppercase rounded focus:outline-none"
+                className="w-16 bg-black border border-[#00ff66] text-[#00ff66] text-center font-retro py-1 px-2 uppercase rounded focus:outline-none focus:ring-1 focus:ring-[#00ff66]"
                 placeholder="ACE"
               />
               <button
@@ -1427,15 +1445,16 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
         </div>
       )}
 
-      {/* On-Screen Virtual Touch Controls */}
+      {/* On-Screen Touch & Mobile Virtual Controller */}
       <div className="mt-4 w-full max-w-[800px] flex items-center justify-between px-2 sm:px-6 select-none touch-none">
+        {/* Virtual D-Pad */}
         <div className="relative w-28 h-28 bg-stone-900/90 border border-stone-700/80 rounded-2xl p-2 grid grid-cols-3 grid-rows-3 gap-1 shadow-lg">
           <div />
           <button
             onPointerDown={() => (keysRef.current['ArrowUp'] = true)}
             onPointerUp={() => (keysRef.current['ArrowUp'] = false)}
             onPointerLeave={() => (keysRef.current['ArrowUp'] = false)}
-            className="bg-stone-800 active:bg-[#00ff66] border border-stone-700 rounded text-center text-xs font-bold text-[#00ff66]"
+            className="bg-stone-800 active:bg-[#00ff66] active:text-black border border-stone-700 rounded-lg text-center text-xs font-bold text-[#00ff66] flex items-center justify-center transition-transform active:scale-95"
           >
             ▲
           </button>
@@ -1444,7 +1463,7 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
             onPointerDown={() => (keysRef.current['ArrowLeft'] = true)}
             onPointerUp={() => (keysRef.current['ArrowLeft'] = false)}
             onPointerLeave={() => (keysRef.current['ArrowLeft'] = false)}
-            className="bg-stone-800 active:bg-[#00ff66] border border-stone-700 rounded text-center text-xs font-bold text-[#00ff66]"
+            className="bg-stone-800 active:bg-[#00ff66] active:text-black border border-stone-700 rounded-lg text-center text-xs font-bold text-[#00ff66] flex items-center justify-center transition-transform active:scale-95"
           >
             ◀
           </button>
@@ -1453,7 +1472,7 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
             onPointerDown={() => (keysRef.current['ArrowRight'] = true)}
             onPointerUp={() => (keysRef.current['ArrowRight'] = false)}
             onPointerLeave={() => (keysRef.current['ArrowRight'] = false)}
-            className="bg-stone-800 active:bg-[#00ff66] border border-stone-700 rounded text-center text-xs font-bold text-[#00ff66]"
+            className="bg-stone-800 active:bg-[#00ff66] active:text-black border border-stone-700 rounded-lg text-center text-xs font-bold text-[#00ff66] flex items-center justify-center transition-transform active:scale-95"
           >
             ▶
           </button>
@@ -1462,18 +1481,20 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
             onPointerDown={() => (keysRef.current['ArrowDown'] = true)}
             onPointerUp={() => (keysRef.current['ArrowDown'] = false)}
             onPointerLeave={() => (keysRef.current['ArrowDown'] = false)}
-            className="bg-stone-800 active:bg-[#00ff66] border border-stone-700 rounded text-center text-xs font-bold text-[#00ff66]"
+            className="bg-stone-800 active:bg-[#00ff66] active:text-black border border-stone-700 rounded-lg text-center text-xs font-bold text-[#00ff66] flex items-center justify-center transition-transform active:scale-95"
           >
             ▼
           </button>
           <div />
         </div>
 
+        {/* Status Indicator */}
         <div className="hidden sm:flex flex-col items-center text-[10px] font-retro text-stone-400 text-center">
-          <span className="text-[#ffe600]">{activeLevelName}</span>
-          <span className="text-[9px] text-stone-500 mt-1">WEAPON: {activeWeapon}</span>
+          <span className="text-[#ffe600]">BOMB: [B] KEY</span>
+          <span className="text-[9px] text-stone-500 mt-1">BOMBS REMAINING: {bombs}</span>
         </div>
 
+        {/* Virtual Action Buttons */}
         <div className="flex items-center space-x-3">
           <button
             onPointerDown={() => {
@@ -1484,7 +1505,11 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
               }
             }}
             disabled={gameState === 'PLAYING' && bombs <= 0}
-            className="w-14 h-14 rounded-full font-retro text-[9px] font-bold shadow-lg flex items-center justify-center bg-gradient-to-b from-[#ffe600]/30 to-amber-900/40 border border-[#ffe600] text-[#ffe600]"
+            className={`w-14 h-14 rounded-full font-retro text-[9px] font-bold shadow-lg flex items-center justify-center transition-transform active:scale-95 ${
+              bombs > 0 || gameState !== 'PLAYING'
+                ? 'bg-gradient-to-b from-[#ffe600]/30 to-amber-900/40 border border-[#ffe600] text-[#ffe600]'
+                : 'bg-stone-800 border border-stone-700 text-stone-600 opacity-50 cursor-not-allowed'
+            }`}
           >
             BOMB ({bombs})
           </button>
@@ -1499,7 +1524,7 @@ export default function ArcadeGame({ theme = 'NEON', isBgmMuted = false }: Arcad
             onPointerUp={() => {
               pointerRef.current.firing = false;
             }}
-            className="w-16 h-16 bg-gradient-to-b from-[#00ff66]/30 to-emerald-900/40 border-2 border-[#00ff66] text-[#00ff66] rounded-full font-retro text-[10px] font-bold shadow-lg flex items-center justify-center"
+            className="w-16 h-16 bg-gradient-to-b from-[#00ff66]/30 to-emerald-900/40 border-2 border-[#00ff66] active:scale-95 text-[#00ff66] rounded-full font-retro text-[10px] font-bold shadow-[0_0_15px_rgba(0,255,102,0.4)] flex items-center justify-center transition-transform"
           >
             {gameState === 'PLAYING' ? 'FIRE' : 'START'}
           </button>
